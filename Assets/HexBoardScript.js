@@ -26,8 +26,6 @@ function Start () {
 	{
 		for(var y=0; y < hi_index; y++)
 		{
-			Debug.Log(String.Format("{0},{1}", x, y));
-		
 			// Determine a random texture from the two defined.
 			if(1 == Random.Range(1,3))
 			{
