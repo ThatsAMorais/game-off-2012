@@ -6,7 +6,9 @@ var forker : Transform;
 var brancher : Transform;
 var fortification : Transform;
 var number_of_trees : int;
-var y_placement : int = 0;
+var number_of_forkers : int;
+var number_of_branchers : int;
+var y_placement : float;
 
 var groundTexture1 : Texture2D;
 var groundTexture2 : Texture2D;
@@ -42,22 +44,73 @@ function Start () {
 			// Place trees
 			if((treesPlaced < number_of_trees) && (2 == Random.Range(1,20)))
 			{
-				var treeClone : Transform = Instantiate(tree, gameObject.Find(String.Format("HexPlain/_{0}_{1}_", x, y)).transform.position, Quaternion.identity);
+				/*var treeClone : Transform = Instantiate(tree,
+														gameObject.Find(String.Format("HexPlain/_{0}_{1}_", x, y)).transform.position,
+														Quaternion.identity);*/
+				var treeClone : Transform = Instantiate(tree);
+				treeClone.parent = gameObject.Find(String.Format("HexPlain/_{0}_{1}_", x, y)).transform;
+				treeClone.transform.position = gameObject.Find(String.Format("HexPlain/_{0}_{1}_", x, y)).transform.position;
 				treeClone.transform.position.y = y_placement;
-				treeClone.transform.localScale = Vector3(0.25, 0.25, 0.25);
+				treeClone.transform.localScale = Vector3(0.5, 0.5, 0.5);
 				treesPlaced += 1;
 			}
 		}
 	}
 
 	//Create the base.
-	var baseClone : Transform = Instantiate(base);
-	baseClone.transform.position = gameObject.Find("/HexPlain/_3_3_").transform.position;
-	baseClone.transform.position.y = y_placement;
+	var baseClone1 : Transform = Instantiate(base);
+	baseClone1.transform.position = gameObject.Find("/HexPlain/_3_3_").transform.position;
+	baseClone1.transform.position.y = y_placement;
+	baseClone1.renderer.material.color = Color.red;
+	baseClone1.name = "ForkerBase";
+	
+
+	//for(var f=0; f < number_of_forkers; f++)
+	//{
+	//}
+	CreateForker(6,3);
+	CreateForker(6,5);
+	CreateForker(6,7);
+	CreateForker(4,7);
+	
+	//Create the base.
+	var baseClone2 : Transform = Instantiate(base);
+	baseClone2.transform.position = gameObject.Find("/HexPlain/_28_28_").transform.position;
+	baseClone2.transform.position.y = y_placement;
+	baseClone2.renderer.material.color = Color.blue;
+	baseClone2.name = "BrancherBase";
+	
+	//for(var b=0; b < number_of_branchers; b++)
+	//{
+	//}
+	CreateBrancher(27,24);
+	CreateBrancher(26,25);
+	CreateBrancher(25,27);
+	CreateBrancher(23,28);
 }
 
 function Update () {
 	if (Input.GetButtonDown("Fire1")) {
 		
 	}
+}
+
+function CreateForker(x, y)
+{
+	var forkerClone : Transform;
+	forkerClone = Instantiate(forker);
+	forkerClone.parent = gameObject.Find(String.Format("HexPlain/_{0}_{1}_", x, y)).transform;
+	forkerClone.transform.localScale = Vector3(1, 1, 1);
+	forkerClone.transform.position = gameObject.Find(String.Format("HexPlain/_{0}_{1}_", x, y)).transform.position;
+	forkerClone.transform.position.y = y_placement;
+}
+
+function CreateBrancher(x, y)
+{
+	var brancherClone : Transform;
+	brancherClone = Instantiate(brancher);
+	brancherClone.parent = gameObject.Find(String.Format("HexPlain/_{0}_{1}_", x, y)).transform;
+	brancherClone.transform.localScale = Vector3(1, 1, 1);
+	brancherClone.transform.position = gameObject.Find(String.Format("HexPlain/_{0}_{1}_", x, y)).transform.position;
+	brancherClone.transform.position.y = y_placement;
 }
