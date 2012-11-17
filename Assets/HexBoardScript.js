@@ -47,7 +47,7 @@ function CreateBase(x, y, color:Color, name)
 	var baseClone : Transform = Instantiate(base);
 	SetupPiece(baseClone, x, y, name);
 	baseClone.renderer.material.color = color;
-	piece.transform.localScale = Vector3(2, 20, 2);
+	baseClone.transform.localScale = Vector3(2, 20, 2);
 }
 
 function CreateBranch(x, y)
