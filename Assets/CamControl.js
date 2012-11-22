@@ -13,12 +13,14 @@ private var originalColorOfSelected : Color;
 public var targetedSelection : GameObject; // hold Fire2-selected
 private var originalColorOfTargeted : Color;
 
-function Start () {
+function Start ()
+{
 	gameObject.Find("Main Camera").transform.position = camOrigin.transform.position;
 	gameObject.Find("Main Camera").transform.position.y = camHeight;
 }
 
-function Update () {
+function Update ()
+{
 
 	var camPos : Vector3 = gameObject.Find("Main Camera").transform.position;
 	
@@ -32,43 +34,73 @@ function Update () {
     	camPos.x = Mathf.Clamp(camPos.x + Input.GetAxis("Mouse X"), posMin, posMax);
     	camPos.z = Mathf.Clamp(camPos.z + Input.GetAxis("Mouse Y"), posMin, posMax);
 	}
-	else
+	
+	DoMousePicking();
+	
+	gameObject.Find("Main Camera").transform.position = camPos;
+}
+
+function OnGUI()
+{
+	if(null != currentSelection)
 	{
-		/* Mouse Picking */
-		var ray = Camera.main.ScreenPointToRay(Input.mousePosition);
-		var hit : RaycastHit;
-		var layerMask : LayerMask = -1;
-		
-		if(Input.GetButtonDown("Fire1"))
-		{			
-			Debug.Log("Fire1 pressed");
-			layerMask = 1 << LayerMask.NameToLayer("Forkers") |
-						1 << LayerMask.NameToLayer("Branchers") |
-						1 << LayerMask.NameToLayer("Buildings");
-			  
-			// Check if we hit a selectable object like a unit or building
-			if(Physics.Raycast(ray, hit, Mathf.Infinity, layerMask))
-			{
-				SelectObject(GameObject.Find(hit.transform.name));
-			}
-		}
-		
-		if((null != currentSelection) && (Input.GetButtonUp("Fire2")))
+		if(currentSelection.name.Contains("Base"))
 		{
-			Debug.Log("Fire2 pressed");
-			layerMask = 1 << LayerMask.NameToLayer("Selectable") | 
-						1 << LayerMask.NameToLayer("Trees") | 
-						1 << LayerMask.NameToLayer("Buildings");
-						
-			// Operate on targetedSelection accordingly
-			if(Physics.Raycast(ray, hit, Mathf.Infinity, layerMask))
-			{
-				TargetObject(GameObject.Find(hit.transform.name));
-			}
+			currentSelection.GetComponent(BaseScript).DoSelectedGUI(GetSelectedGUIRect());
+		}
+		else if((currentSelection.name.Contains("forker")) ||
+				(currentSelection.name.Contains("brancher")))
+		{
+			currentSelection.GetComponent(UnitScript).DoSelectedGUI(GetSelectedGUIRect());
+		}
+		else
+		{
+			Debug.Log("No patterns matched for currentSelected in OnGUI.");
+		}
+	}
+}
+
+function GetSelectedGUIRect()
+{
+	return Rect(Screen.width*0.75, Screen.height*0.7, Screen.width*0.25, Screen.height*0.2);
+}
+
+function DoMousePicking()
+{
+	/* Mouse Picking */
+	var ray = Camera.main.ScreenPointToRay(Input.mousePosition);
+	var hit : RaycastHit;
+	var layerMask : LayerMask = -1;
+	
+	if(Input.GetButtonDown("Fire1"))
+	{			
+		//Debug.Log("Fire1 pressed");
+		layerMask = 1 << LayerMask.NameToLayer("Forkers") |
+					1 << LayerMask.NameToLayer("Branchers") |
+					1 << LayerMask.NameToLayer("Buildings");
+		  
+		// Check if we hit a selectable object like a unit or building
+		if(Physics.Raycast(ray, hit, Mathf.Infinity, layerMask))
+		{
+			//SelectObject(GameObject.Find(hit.transform.name));
+			SelectObject(hit.transform.gameObject);
 		}
 	}
 	
-	gameObject.Find("Main Camera").transform.position = camPos;
+	if((null != currentSelection) && (Input.GetButtonUp("Fire2")))
+	{
+		//Debug.Log("Fire2 pressed");
+		layerMask = 1 << LayerMask.NameToLayer("Selectable") | 
+					1 << LayerMask.NameToLayer("Trees") | 
+					1 << LayerMask.NameToLayer("Buildings");
+					
+		// Operate on targetedSelection accordingly
+		if(Physics.Raycast(ray, hit, Mathf.Infinity, layerMask))
+		{
+			//TargetObject(GameObject.Find(hit.transform.name));
+			TargetObject(hit.transform.gameObject);
+		}
+	}
 }
 
 function ClearCurrentSelection()
@@ -76,8 +108,7 @@ function ClearCurrentSelection()
 	if(null != currentSelection)
 	{
 		currentSelection.renderer.material.color = originalColorOfSelected;
-		
-		//TODO: Use a selected mat 
+		currentSelection = null;
 	}
 }
 
@@ -86,6 +117,7 @@ function ClearCurrentTargeted()
 	if(null != targetedSelection)
 	{
 		targetedSelection.renderer.material.color = originalColorOfTargeted;
+		targetedSelection = null;
 	}
 }
 

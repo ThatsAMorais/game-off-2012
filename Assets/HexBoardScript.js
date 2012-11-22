@@ -3,37 +3,33 @@
 // "constants"
 var lo_index : int = 0;
 var hi_index : int = 32;
-private var INIT_STATE = 0;
-private var GAME_STATE = 1;
-private var CREDITS_STATE = 2; // Not a priority, just needed(wanted) a third state
 
+private var INIT_STATE = 0;
+private var SETUP_STATE = 1;
+private var GAME_STATE = 2;
+private var CREDITS_STATE = 3;
+private var PLAYER_TYPE_FORKER = "forker";
+private var PLAYER_TYPE_BRANCHER = "brancher";
+private var PLAYER_TYPE_BOTH = "both";
 
 // public
 var base : Transform;
 var branch_bush : Transform;
-var forker : Transform;
-var brancher : Transform;
-var branch : Transform;
-var fork : Transform;
-var fortification : Transform;
 var init_number_of_bushes : int;
-var init_number_of_forkers : int;
-var init_number_of_branchers : int;
 var z_placement : float;
-var dropped_z_placement : float;
 var groundTexture1 : Texture2D;
 var groundTexture2 : Texture2D;
-
+var playerType = PLAYER_TYPE_BOTH;
 
 // private
-private var forkerCount : int;
-private var brancherCount : int;
-private var branchCount : int;
-private var forkCount : int;
-private var fortificationCount : int;
 private var bushesPlaced : int;
 private var gameState : int = INIT_STATE;
 private var escapeMenuOn = false;
+private var setupStep = 0;					// the curent step in the battle-setup process
+
+var BUTTON_W = 300;
+var BUTTON_H = 200;
+var BUTTONS_PER_ROW : int = 1;
 
 
 /* Unity virtuals */
@@ -56,6 +52,10 @@ function OnGUI()
 	{
 		DoInitGUI();
 	}
+	else if(gameState == SETUP_STATE)
+	{
+		DoSetupGUI();
+	}
 	else if(gameState == GAME_STATE)
 	{
 		DoGameboardGUI();
@@ -70,39 +70,106 @@ function ToggleEscapeMenu()
 	else
 		escapeMenuOn = true;
 	
-	
+	/*
 	if(escapeMenuOn)
 	{
 		// Disable the camera script
-		//GameObject.Find("Main Camera").GetComponent("Cam Control").enabled = false;
+		Camera.mainCamera.GetComponent(CamControl).enabled = false;
 	}
 	else
 	{
 		// Enable the camera script
-		//GetComponent(CameraScript).enabled = true;
+		Camera.mainCamera.GetComponent(CamControl).enabled = true;
 	}
+	*/
+}
+
+
+
+function SetState(newGameState : int)
+{
+	// Do whatever to clean up the gamestate
+	
+	gameState = newGameState;
+
+	switch(newGameState)
+	{
+		case INIT_STATE:
+			CreateInitScene();
+			break;
+
+		case SETUP_STATE:
+			CreateSetupScene();
+			break;
+
+		case GAME_STATE:
+			CreateGameScene();
+			break;
+	}
+}
+
+function DoSelectionGrid(selectionGridInt : int, selectionStrings : String[])
+{
+	return GUI.SelectionGrid(Rect((Screen.width/2 - (BUTTON_W/2)),
+								  (Screen.height/2 - (((selectionStrings.Length/BUTTONS_PER_ROW)*BUTTON_H)/2)),
+								  BUTTON_W, BUTTON_H),
+							 selectionGridInt, selectionStrings, BUTTONS_PER_ROW);
 }
 
 function DoInitGUI()
 {
 	GUI.backgroundColor = Color.black;
-	GUI.backgroundColor.a = 255;
 	GUI.color = Color.green;
 
-	var selectionStrings : String[] = ["Start a Battle", "Credits"];
+	var selectionStrings : String[] = ["Start the Battle"];
 	var selectionGridInt : int = 3;
 
-	selectionGridInt = GUI.SelectionGrid(Rect(Screen.width/2, Screen.height/2, 100, 50), selectionGridInt, selectionStrings, 1);
+	selectionGridInt = DoSelectionGrid(selectionGridInt, selectionStrings);
 	switch(selectionGridInt)
 	{
 		case 0:
-			SetState(GAME_STATE);
+			SetState(SETUP_STATE);
 			break;
 		case 1:
 			break;
 	}
 }
 
+function DoSetupGUI()
+{
+	GUI.backgroundColor = Color.black;
+	GUI.color = Color.green;
+	
+	switch(setupStep)
+	{
+		case 0:
+		
+			GUI.TextArea(Rect(Screen.width/2-75, Screen.height/2-50, 150, 100), "Forkers: Offensive, Branchers: Defensive, Both: Play with both");
+
+			var selectionStrings : String[] = ["Forkers", "Branchers", "Both"];
+			var selectionGridInt : int = 99;
+		
+			selectionGridInt = DoSelectionGrid(selectionGridInt, selectionStrings);
+			switch(selectionGridInt)
+			{
+				case 0:
+					playerType = PLAYER_TYPE_FORKER;
+					SetState(GAME_STATE);
+					break;
+				case 1:
+					playerType = PLAYER_TYPE_BRANCHER;
+					SetState(GAME_STATE);
+					break;
+				case 2:
+					playerType = PLAYER_TYPE_BOTH;
+					SetState(GAME_STATE);
+					break;
+			}
+			break;
+		default:
+			break;
+	}
+}
 
 function DoGameboardGUI()
 {
@@ -112,13 +179,14 @@ function DoGameboardGUI()
 		var selectionStrings : String[] = ["Return", "Quit"];
 
 		// Show the Escape menu GUI
-		selectionGridInt = GUI.SelectionGrid(Rect (Screen.width/2, Screen.height/2, 100, 50), selectionGridInt, selectionStrings, 1);
+		selectionGridInt = GUI.SelectionGrid(Rect (Screen.width/2, Screen.height/2, 1, 1), selectionGridInt, selectionStrings, 1);
 		switch(selectionGridInt)
 		{
 			case 0:
 				ToggleEscapeMenu();
 				break;
 			case 1:
+				Application.LoadLevel("init_scene");
 				break;
 		}
 	}
@@ -132,117 +200,60 @@ function DoGameboardGUI()
 function CreateInitScene()
 {
 	gameState = INIT_STATE;
-	
-	// Just an experiment	
-	//Application.LoadLevel("init_scene");
 
 	// Nothing to do yet but show the UI, which is done in OnGUI
-	//TODO: Do something interesting here?
 }
 
+function CreateSetupScene()
+{
+	gameState = SETUP_STATE;
+
+	// Nothing to do yet but show the UI, which is done in OnGUI
+}
 
 function CreateGameScene()
 {
 	gameState = GAME_STATE;
 	
-	// Just an experiment
-	//Application.LoadLevel("game_scene");
-	
 	// Setup the Gameboard itself
 	CreateGameboard();
 }
 
-
-function SetupPiece(piece : Transform, x, y, z : float, name : String, scale : Vector3)
+function SetupPiece(piece : Transform, x, y, z : float, name : String)
 {
-	piece.parent = gameObject.Find(String.Format("HexPlain/_{0}_{1}_", x, y)).transform;
-	piece.transform.position = gameObject.Find(String.Format("HexPlain/_{0}_{1}_", x, y)).transform.position;
-	piece.transform.position.y = z;
-	//piece.transform.localScale = scale;
 	piece.name = name;
+	piece.parent = gameObject.Find(String.Format("HexPlain/_{0}_{1}_", x, y)).transform;
+	//piece.transform.position.x = columnTransform.position.x;
+	//piece.transform.position.y = columnTransform.position.y;
+	piece.transform.localPosition = new Vector3(0,0,0);
+	piece.transform.localPosition.z = z;
 }
 
 function CreateBush(x, y)
 {
 	var bushClone : Transform = Instantiate(branch_bush);
-	SetupPiece(bushClone, x, y, z_placement, String.Format("branchbush_{0}", bushesPlaced), new Vector3(2, 2, 2));
+	SetupPiece(bushClone, x, y, 3, String.Format("branchbush_{0}", bushesPlaced));
 	bushesPlaced += 1;
 }
 
-function CreateBase(x, y, color:Color, name : String, rotation : Vector3)
+function CreateBase(x, y, name : String, player : boolean, baseType : String)
 {
 	var baseClone : Transform = Instantiate(base);
-	SetupPiece(baseClone, x, y, z_placement, name, new Vector3(4, 30, 4));
-	baseClone.GetChild(0).renderer.material.color = color;
-	//baseClone.Rotate(rotation);
-}
-
-function CreateBranch(x, y)
-{
-	var branchClone : Transform = Instantiate(branch);
-	SetupPiece(branchClone, x, y, dropped_z_placement, String.Format("branch_{0}", branchCount), new Vector3(2,2,2));
-	//branchClone.transform.Rotate(new Vector3(90,0,0));
-	branchCount++;
-}
-
-function CreateForker(x, y)
-{
-	var forkerClone : Transform = Instantiate(forker);
-	var z = forkerClone.position.y; ///hacking it up
-	SetupPiece(forkerClone, x, y, z, String.Format("forker_{0}", forkerCount), new Vector3(1,1,1));
-	forkerCount++;
-}
-
-function CreateFork(x, y)
-{
-	var forkClone : Transform = Instantiate(fork);
-	SetupPiece(forkClone, x, y, dropped_z_placement, String.Format("fork_{0}", forkCount), new Vector3(1,1,1));
-	forkCount++;
-}
-
-function CreateBrancher(x, y)
-{
-	var brancherClone : Transform = Instantiate(brancher);
-	SetupPiece(brancherClone, x, y, z_placement, String.Format("brancher_{0}", brancherCount), new Vector3(1,1,1));
-	brancherCount++;
-}
-
-
-function CreateFortification(x, y)
-{
-	var fortificationClone : Transform = Instantiate(fortification);
-	SetupPiece(fortificationClone, x, y, z_placement, String.Format("fortification_{0}", fortificationCount), new Vector3(1,1,1));
-	fortificationCount++;
-}
-
-
-function SetState(newGameState : int)
-{
-	// Do whatever to clean up the gamestate
-	// TODO: Might not be necessary if making better use of Unity scenes.
-	CleanUpPreviousState();
 	
-	gameState = newGameState;
-
-	switch(newGameState)
-	{
-		case GAME_STATE:
-			CreateGameScene();
-			break;
-	}
-}
-
-function CleanUpPreviousState()
-{
+	SetupPiece(baseClone, x, y, z_placement, name);
+	baseClone.localPosition.x -= 0.25;
+	baseClone.localPosition.y -= 0.25;
 	
+	var baseScript : BaseScript = GameObject.Find(name).GetComponent(BaseScript);
+	//baseScript.SetBaseType(baseType);
+	//baseScript.SetPlayerType(player);
 }
-
 
 function CreateGameboard()
 {
 	var tex : Texture2D = null;
 
-	// This loop is pretty grotesque, but 1024 iterations might not be too bad...
+	// This loop is O(n^2), but 32x32 iterations might not be too bad...
 	for(var x=0; x < hi_index; x++)
 	{
 		for(var y=0; y < hi_index; y++)
@@ -268,40 +279,25 @@ function CreateGameboard()
 		}
 	}
 
-	//Create the base.
-	CreateBase(3, 3, Color.red, "ForkerBase", new Vector3(0,-15,0));
-	
-	var piecePos : Vector2 = new Vector2(3,6);
-	var incrs : int = 0;
-	for(var f=0; f < init_number_of_forkers; f++)
+	switch(playerType)
 	{
-		CreateForker(piecePos.x, piecePos.y);
-		CreateBranch(piecePos.x+1, piecePos.y);
-		piecePos.y++;
-		incrs++;
-		
-		if(4 == incrs)
-		{
-			piecePos.x += 2;
-			piecePos.y -= 4;
-		}
-	}
-	
-	//Create the base.
-	CreateBase(28, 28, Color.blue, "BrancherBase", new Vector3(0,15,0));
-	
-	piecePos = new Vector2(27, 27);
-	for(var b=0; b < init_number_of_branchers; b++)
-	{
-		CreateBrancher(piecePos.x, piecePos.y);
-		CreateBranch(piecePos.x-1, piecePos.y);
-		piecePos.y--;
-		incrs++;
-		
-		if(4 == incrs)
-		{
-			piecePos.x -= 2;
-			piecePos.y += 4;
-		}
+		case PLAYER_TYPE_FORKER:
+			//Create a base.
+			CreateBase(3, 3, "PlayerBase", true, PLAYER_TYPE_FORKER);
+			//Create a base.
+			CreateBase(28, 28, "OpponentBase", false, PLAYER_TYPE_BRANCHER);
+			break;
+		case PLAYER_TYPE_BRANCHER:
+			//Create a base.
+			CreateBase(3, 3, "PlayerBase", true, PLAYER_TYPE_BRANCHER);
+			//Create a base.
+			CreateBase(28, 28, "OpponentBase", false, PLAYER_TYPE_FORKER);
+			break;
+		case PLAYER_TYPE_BOTH:
+			//Create a base.
+			CreateBase(3, 3, "PlayerBase", true, PLAYER_TYPE_BOTH);
+			//Create a base.
+			CreateBase(28, 28, "OpponentBase", false, PLAYER_TYPE_BOTH);
+			break;
 	}	
 }
