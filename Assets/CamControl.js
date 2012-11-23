@@ -62,7 +62,7 @@ function OnGUI()
 
 function GetSelectedGUIRect()
 {
-	return Rect(Screen.width*0.75, Screen.height*0.7, Screen.width*0.25, Screen.height*0.2);
+	return Rect(Screen.width*0.5, Screen.height*0.7, Screen.width*0.25, Screen.height*0.2);
 }
 
 function DoMousePicking()

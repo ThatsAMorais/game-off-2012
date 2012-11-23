@@ -36,6 +36,7 @@ var BUTTONS_PER_ROW : int = 1;
 function Start ()
 {
 	CreateInitScene();
+	gameState = SETUP_STATE;
 }
 
 function Update ()
@@ -70,7 +71,6 @@ function ToggleEscapeMenu()
 	else
 		escapeMenuOn = true;
 	
-	/*
 	if(escapeMenuOn)
 	{
 		// Disable the camera script
@@ -81,7 +81,6 @@ function ToggleEscapeMenu()
 		// Enable the camera script
 		Camera.mainCamera.GetComponent(CamControl).enabled = true;
 	}
-	*/
 }
 
 
@@ -143,7 +142,6 @@ function DoSetupGUI()
 	switch(setupStep)
 	{
 		case 0:
-		
 			GUI.TextArea(Rect(Screen.width/2-75, Screen.height/2-50, 150, 100), "Forkers: Offensive, Branchers: Defensive, Both: Play with both");
 
 			var selectionStrings : String[] = ["Forkers", "Branchers", "Both"];
@@ -219,34 +217,43 @@ function CreateGameScene()
 	CreateGameboard();
 }
 
-function SetupPiece(piece : Transform, x, y, z : float, name : String)
+function SetupPiece(piece : Transform, x : int, y : int, z : float, name : String)
 {
-	piece.name = name;
-	piece.parent = gameObject.Find(String.Format("HexPlain/_{0}_{1}_", x, y)).transform;
-	//piece.transform.position.x = columnTransform.position.x;
-	//piece.transform.position.y = columnTransform.position.y;
-	piece.transform.localPosition = new Vector3(0,0,0);
-	piece.transform.localPosition.z = z;
+	if(0 > x || 0 > y)
+	{
+		Debug.Log(String.Format("Bad Position: ({0},{1})", x, y));
+	}
+	else
+	{
+		piece.name = name;
+		var columnTrans = gameObject.Find(String.Format("HexPlain/_{0}_{1}_", x, y));
+		piece.parent = gameObject.Find(String.Format("HexPlain/_{0}_{1}_", x, y)).transform;
+		piece.transform.localPosition = new Vector3(0,0, piece.transform.localPosition.z);
+	}
 }
 
-function CreateBush(x, y)
+function CreateBush(x : int, y : int)
 {
+	var name : String = String.Format("branchbush_{0}", bushesPlaced);
 	var bushClone : Transform = Instantiate(branch_bush);
-	SetupPiece(bushClone, x, y, 3, String.Format("branchbush_{0}", bushesPlaced));
-	bushesPlaced += 1;
+	
+	SetupPiece(bushClone, x, y, 3, name);
+	
+	GameObject.Find(name).GetComponent(BushScript).SetPosition(x,y);
+	bushesPlaced++;
 }
 
-function CreateBase(x, y, name : String, player : boolean, baseType : String)
+function CreateBase(x : int, y : int, name : String, player : boolean, baseType : String)
 {
 	var baseClone : Transform = Instantiate(base);
-	
 	SetupPiece(baseClone, x, y, z_placement, name);
 	baseClone.localPosition.x -= 0.25;
 	baseClone.localPosition.y -= 0.25;
 	
 	var baseScript : BaseScript = GameObject.Find(name).GetComponent(BaseScript);
-	//baseScript.SetBaseType(baseType);
-	//baseScript.SetPlayerType(player);
+	baseScript.SetBaseType(baseType);
+	baseScript.SetPlayerType(player);
+	baseScript.SetPosition(x,y);
 }
 
 function CreateGameboard()

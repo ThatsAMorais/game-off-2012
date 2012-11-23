@@ -1,6 +1,6 @@
 #pragma strict
 
-var baseType : String = "default";
+var baseType : String;
 var player : boolean = false;
 var forker : Transform;
 var brancher : Transform;
@@ -13,15 +13,17 @@ var unit_creation_waypoint : Vector2;
 
 private var current_construction : String;
 private var construction_in_progress : boolean = false;
-private var construction_progress : int = 0;
+private var construction_progress : float = 0;
+private var world_position : Vector2;
 
 var MAX_UNITS_PER_BASE = 15;
-var CONSTRUCTION_TIME = 10;
-var UNIT_DROP_X = 0;
-var UNIT_DROP_Y = 0;
+var CONSTRUCTION_TIME : float = 10.0;
+var UNIT_DROP_X : float = 0;
+var UNIT_DROP_Y : float = 0;
 
 function Start ()
 {
+	// There are some limitations to this function wrt transform
 	InitializeBase();
 }
 
@@ -38,7 +40,7 @@ function Update () {
 	
 	if(player)
 	{
-		switch(baseType)
+		switch(GetBaseType())
 		{
 			case "forker":
 			case "brancher":
@@ -55,81 +57,33 @@ function Update () {
 	}
 }
 
-function ConstructUnit(unit : String, x, y)
-{
-	switch(unit)
-	{
-		case "forker":
-			CreateForker(x, y);
-			break;
-		case "brancher":
-			CreateBrancher(x,y);
-			break;
-	}
-}
 
 function InitializeBase()
 {
 	// Clear variables
+	
 	// Set defaults
-	var modifier : int = 2;
 	var rotation : int = 0;
 	
 	// Hack
 	if(15 > gameObject.transform.position.x)
 	{
-		modifier *= -1;
 		rotation = -90;
 	}
-		
-	UNIT_DROP_X = gameObject.transform.position.x + modifier;
-	UNIT_DROP_Y = gameObject.transform.position.y + modifier;
 
 	gameObject.transform.Rotate(0,0,rotation);
-	
-	//////*Test Code*///////////
-	/*
-	var piecePos : Vector2 = new Vector2(3,6);
-	var incrs : int = 0;
-	for(var f=0; f < init_number_of_forkers; f++)
-	{
-		CreateForker(piecePos.x, piecePos.y);
-		CreateBranch(piecePos.x+1, piecePos.y);
-		piecePos.y++;
-		incrs++;
-		
-		if(4 == incrs)
-		{
-			piecePos.x += 2;
-			piecePos.y -= 4;
-		}
-	}
-	
-	piecePos = new Vector2(27, 27);
-	for(var b=0; b < init_number_of_branchers; b++)
-	{
-		CreateBrancher(piecePos.x, piecePos.y);
-		CreateBranch(piecePos.x-1, piecePos.y);
-		piecePos.y--;
-		incrs++;
-		
-		if(4 == incrs)
-		{
-			piecePos.x -= 2;
-			piecePos.y += 4;
-		}
-	}
-	*/
+}
 
-	/////////////////////////////
+function SetPosition(x : int, y : int)
+{
+	world_position = new Vector2(x,y);
 }
 
 function SetBaseType(type : String)
 {
-	// TODO: Validate the input (for now, trust and coupled code)
 	baseType = type;
 	
-	switch(baseType)
+	switch(GetBaseType())
 	{
 		case "forker":
 			SetBaseColor(Color.red);
@@ -143,72 +97,9 @@ function SetBaseType(type : String)
 	}
 }
 
-function SetPlayerType(isPlayer : boolean)
+function GetBaseType()
 {
-	player = isPlayer;
-}
-
-function SetBaseColor(color : Color)
-{
-	// TODO: Give access to the tower's primary color
-	gameObject.transform.GetChild(0).renderer.material.color = color;
-}
-
-function cancelCurrentConstruction()
-{
-	// TODO: clears the current thing being created by the base 
-	current_construction = "";
-	construction_in_progress = false;
-	construction_progress = 0;
-}
-
-function CreateUnit(unit : String)
-{
-	var spawnPoint : Vector2 = new Vector2(15,15);
-	switch(unit)
-	{
-		case "forker":
-			CreateForker(spawnPoint.x, spawnPoint.y);
-		case "brancher":
-			CreateBrancher(spawnPoint.x, spawnPoint.y);
-	}
-	
-	var unitScript = GameObject.Find(name).GetComponent(UnitScript);
-	unitScript.SetTeam(player);
-	unitScript.SetHomeBase(gameObject.transform);
-}
-
-function CreateForker(x, y)
-{
-	var forkerClone : Transform = Instantiate(forker);
-	var name : String = FormatUnitName("forker");
-	GameObject.Find("HexPlain").GetComponent(HexBoardScript).SetupPiece(forkerClone, x, y, z_placement, name);	
-	forkerCount++;
-	number_of_forkers_alive++;
-}
-
-function CreateBrancher(x, y)
-{
-	var brancherClone : Transform = Instantiate(brancher);
-	GameObject.Find("HexPlain").GetComponent(HexBoardScript).SetupPiece(brancherClone, x, y, z_placement, FormatUnitName("brancher"));
-	brancherCount++;
-	number_of_branchers_alive++;
-}
-
-function FormatUnitName(unit : String)
-{
-	return String.Format("{0}_{1}_{2}",
-						unit,
-		 				(unit == "forker" ? forkerCount : brancherCount),
-		 				(player ? "p" : "o"));
-}
-
-function UnitDeath(unit : String)
-{
-	if(unit == "forker")
-		number_of_forkers_alive = Mathf.Max(0, number_of_forkers_alive - 1);
-	else if(unit == "brancher")
-		number_of_branchers_alive = Mathf.Max(0, number_of_branchers_alive - 1);
+	return baseType;
 }
 
 function GetForkerCount()
@@ -221,10 +112,108 @@ function GetBrancherCount()
 	return brancherCount;
 }
 
+function SetPlayerType(isPlayer : boolean)
+{
+	player = isPlayer;
+}
+function IsPlayer()
+{
+	return player;
+}
+
+function SetBaseColor(color : Color)
+{
+	// TODO: Give access to the tower's primary color
+	gameObject.transform.GetChild(0).renderer.material.color = color;
+}
+
+function FormatUnitName(unit : String)
+{
+	return String.Format("{0}_{1}_{2}",
+						unit,
+		 				(unit == "forker" ? GetForkerCount() : GetBrancherCount()),
+		 				(IsPlayer() ? "p" : "o"));
+}
+
+function CreateUnit(unit : String)
+{
+	var name : String = FormatUnitName(unit);
+	var modifier : int = 1;
+	
+	if(15 > gameObject.transform.position.x)
+	{
+		modifier *= -1;
+	}
+	
+	UNIT_DROP_X  = world_position.x + modifier;
+	UNIT_DROP_Y  = world_position.y - modifier;
+
+	switch(unit)
+	{
+		case "forker":
+			CreateForker(UNIT_DROP_X, UNIT_DROP_Y, name);
+			break;
+		case "brancher":
+			CreateBrancher(UNIT_DROP_X, UNIT_DROP_Y, name);
+			break;
+	}
+	
+	var unitScript = GameObject.Find(name).GetComponent(UnitScript);
+	unitScript.SetTeam(player);
+	unitScript.SetHomeBase(gameObject.transform);
+	unitScript.SetPosition(UNIT_DROP_X,UNIT_DROP_Y);
+}
+
+function SetupPiece(piece : Transform, x : int, y : int, z : float, name : String)
+{
+	GameObject.Find("HexPlain").GetComponent(HexBoardScript).SetupPiece(piece, x, y, z, name);
+}
+
+function CreateForker(x : int, y : int, name : String)
+{
+	var forkerClone : Transform = Instantiate(forker);
+	
+	SetupPiece(forkerClone, x, y, z_placement, name);
+	
+	forkerCount++;
+	number_of_forkers_alive++;
+}
+
+function CreateBrancher(x : int, y : int, name : String)
+{
+	var brancherClone : Transform = Instantiate(brancher);
+	
+	SetupPiece(brancherClone, x, y, z_placement, name);
+	
+	brancherCount++;
+	number_of_branchers_alive++;
+}
+
+function UnitDeath(unit : String)
+{
+	switch(unit)
+	{
+		case "forker":
+			number_of_forkers_alive = Mathf.Max(0, number_of_forkers_alive - 1);
+			break;
+		case "brancher":
+			number_of_branchers_alive = Mathf.Max(0, number_of_branchers_alive - 1);
+			break;
+	}
+}
+
 function StartConstruction(construction : String)
 {
 	current_construction = construction;
 	construction_in_progress = true;
+	construction_progress = 0;
+}
+
+function ClearCurrentConstruction()
+{
+	// TODO: clears the current thing being created by the base 
+	current_construction = "";
+	construction_in_progress = false;
 	construction_progress = 0;
 }
 
@@ -234,11 +223,12 @@ function StepConstruction(deltaTime : float)
 	
 	if(construction_progress >= CONSTRUCTION_TIME)
 	{
-		ConstructUnit(current_construction, UNIT_DROP_X, UNIT_DROP_Y);
-		
-		current_construction = "";
-		construction_in_progress = false;
 		construction_progress = 0;
+		construction_in_progress = false;
+		
+		CreateUnit(current_construction);
+		
+		ClearCurrentConstruction();
 	}
 }
 
@@ -252,68 +242,99 @@ function DoSelectedGUI(rect : Rect)
 	GUILayout.EndArea();
 }
 
+function DoStatsGUI()
+{
+	var bType = ("both" == GetBaseType() ? "forker" : GetBaseType());
+	for(var i = ("both" == GetBaseType() ? 2 : 1); i > 0; i--)
+	{
+		GUILayout.TextField(String.Format("Number of {0}s Alive: {1}/{2}",
+										  bType,
+										  bType == "forker" ? number_of_forkers_alive : number_of_branchers_alive,
+										  bType == "forker" ? GetForkerCount() : GetBrancherCount()));
+			
+		bType = ("forker" == bType ? "brancher" : "forker"); // Swap type for "both"-bases
+	}
+}
+
 function DoBaseGUIPanel()
 {
 	/******Layout*******
-	 ------------------		// -Text
+	 ------------------		// - Text
 	 ------------------
-	 +++++++ | ////////		// +Buttons
-	 +++++++ | ////////		// /Current-Construction
+	 ##################		// # Flexible-space
+	 +++++++ | ////////		// + Buttons
+	 +++++++ | ////////		// / Current-Construction
 	*******************/
 	
 	GUILayout.BeginVertical();
+
+	GUILayout.TextField(String.Format("{0} Base ({1})", (GetBaseType() == "both" ? "Combo" : GetBaseType() == "forker" ? "Forker" : "Brancher"),
+														 (IsPlayer() ? "Yours" : "Opponent's")));
 	
-	/*- Stat Fields -*/
-	GUI.enabled = false;
-	GUILayout.TextField(String.Format("Number of Branchers Alive: {0}/{1}", number_of_branchers_alive, GetBrancherCount()));
-	GUILayout.TextField(String.Format("Number of Forkers Alive: {0}/{1}", number_of_forkers_alive, GetForkerCount()));
-	GUI.enabled = true;
-	/*-\Stat Fields\-*/
+	DoStatsGUI();
 	
-	//GUILayout.FlexibleSpace();
+	GUILayout.FlexibleSpace();
 	
-	GUILayout.BeginHorizontal();
-	
-	/*- Vertical Buttons -*/
-	GUILayout.BeginVertical();
-	// Disable the buttons if a construction is currently in progress.
-	GUI.enabled = !(construction_in_progress);
-	// Disable the buttons if the max number of units has been reached.
-	GUI.enabled = !(MAX_UNITS_PER_BASE == (number_of_branchers_alive + number_of_forkers_alive));
-	
-	if(("forker" == baseType) || ("both" == baseType))
-	{		
-		if(GUILayout.Button(String.Format("Forker ({0})", number_of_forkers_alive)))
-		{
-			StartConstruction("forker");
-		}
+	if(IsPlayer())
+	{
+		DoPlayerGUI();
 	}
-	if(("brancher" == baseType) || ("both" == baseType))
-	{	
-		if(GUILayout.Button(String.Format("Brancher ({0})", number_of_forkers_alive)))
-		{
-			StartConstruction("brancher");
-		}
+	else
+	{
+		DoOpponentGUI();
 	}
-	GUI.enabled = true;
+	
 	GUILayout.EndVertical();
-	/*-\Vertical Buttons\-*/
-	
-	// Current Construction
+}
+
+function DoPlayerGUI()
+{	
+	GUILayout.BeginHorizontal();
+		
+		// Current Construction
 	if(construction_in_progress)
 	{
-		GUI.enabled = false;
-		GUILayout.TextField(String.Format("Currently constructing: {0} ({1})", current_construction));
-		GUI.enabled = true;
+		GUILayout.BeginVertical();	
+		GUILayout.TextField(String.Format("Constructing: {0} {1:0}%",
+							current_construction,
+							100 * (construction_progress/CONSTRUCTION_TIME)));
+		if(GUILayout.Button("Cancel Construction"))
+		{
+			ClearCurrentConstruction();
+		}
+		GUILayout.EndVertical();
 	}
 	else if(MAX_UNITS_PER_BASE == (number_of_branchers_alive + number_of_forkers_alive))
 	{	
-		GUI.enabled = false;
 		GUILayout.TextField(String.Format("Reached the max number of units: {0}", MAX_UNITS_PER_BASE));
+	}
+	else
+	{
+		GUILayout.BeginHorizontal();
+		// Disable the buttons if a construction is currently in progress OR Disable the buttons if the max number of units has been reached.
+		GUI.enabled = !(construction_in_progress) && !(MAX_UNITS_PER_BASE == (number_of_branchers_alive + number_of_forkers_alive));
+		if(("both" == GetBaseType()) || ("forker" == GetBaseType()))
+		{
+			if(GUILayout.Button(String.Format("Forker ({0})", number_of_forkers_alive)))
+			{
+				StartConstruction("forker");
+			}
+		}
+		if(("both" == GetBaseType()) || ("brancher" == GetBaseType()))
+		{
+			if(GUILayout.Button(String.Format("Brancher ({0})", number_of_branchers_alive)))
+			{
+				StartConstruction("brancher");
+			}
+		}
 		GUI.enabled = true;
+		GUILayout.EndHorizontal();
 	}
 
 	GUILayout.EndHorizontal();
-	
-	GUILayout.EndVertical();
+}
+
+function DoOpponentGUI()
+{
+	// Not sure what information to show about an opponent yet.
 }

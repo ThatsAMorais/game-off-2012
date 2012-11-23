@@ -21,7 +21,6 @@ function Update () {
 
 function OnGUI()
 {
-	Debug.Log("OnGUI");
 	switch(initState)
 	{
 		case INIT_MENU:
@@ -36,7 +35,6 @@ function OnGUI()
 
 function DoInitGUI()
 {
-	Debug.Log("DoInitGUI");
 	GUI.backgroundColor = Color.black;
 	GUI.color = Color.green;
 
@@ -57,7 +55,6 @@ function DoInitGUI()
 			Debug.Log("Credits");
 			break;
 		default:
-			Debug.Log("Doing Nothing");
 			break;
 	}
 }
