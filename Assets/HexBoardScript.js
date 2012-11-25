@@ -7,6 +7,7 @@ var hi_index : int = 32;
 private var INIT_STATE = 0;
 private var SETUP_STATE = 1;
 private var GAME_STATE = 2;
+private var MENU_STATE = 3;
 private var CREDITS_STATE = 3;
 private var PLAYER_TYPE_FORKER = "forker";
 private var PLAYER_TYPE_BRANCHER = "brancher";
@@ -26,6 +27,7 @@ private var bushesPlaced : int;
 private var gameState : int = INIT_STATE;
 private var escapeMenuOn = false;
 private var setupStep = 0;					// the curent step in the battle-setup process
+private var gameStarted : boolean = false;
 
 var BUTTON_W = 300;
 var BUTTON_H = 200;
@@ -36,12 +38,12 @@ var BUTTONS_PER_ROW : int = 1;
 function Start ()
 {
 	CreateInitScene();
-	gameState = SETUP_STATE;
+	SetState(SETUP_STATE);
 }
 
 function Update ()
 {
-	if(Input.GetKeyUp(UnityEngine.KeyCode.Escape))
+	if(Input.GetKeyDown(UnityEngine.KeyCode.Escape))
 	{
 		ToggleEscapeMenu();
 	}
@@ -61,32 +63,44 @@ function OnGUI()
 	{
 		DoGameboardGUI();
 	}
+	else if(gameState == MENU_STATE)
+	{
+		DoMenuGUI();
+	}
 }
 /******************/
 
+function GetCamControl()
+{
+	return Camera.mainCamera.GetComponent(CamControl);
+}
+
+function ToggleCamControl(val : boolean)
+{
+	GetCamControl().enabled = val;
+}
+
+function GetSize()
+{
+	return new Vector2(hi_index, hi_index);
+}
+
 function ToggleEscapeMenu()
 {
-	if(escapeMenuOn)
-		escapeMenuOn = false;
-	else
-		escapeMenuOn = true;
-	
-	if(escapeMenuOn)
+	if(MENU_STATE == gameState)
 	{
-		// Disable the camera script
-		Camera.mainCamera.GetComponent(CamControl).enabled = false;
+		SetState(GAME_STATE);
 	}
-	else
+	else if(GAME_STATE == gameState)
 	{
-		// Enable the camera script
-		Camera.mainCamera.GetComponent(CamControl).enabled = true;
+		SetState(MENU_STATE);
 	}
 }
 
-
-
 function SetState(newGameState : int)
 {
+	var camOn = false;
+
 	// Do whatever to clean up the gamestate
 	
 	gameState = newGameState;
@@ -100,19 +114,22 @@ function SetState(newGameState : int)
 		case SETUP_STATE:
 			CreateSetupScene();
 			break;
+			
+		case MENU_STATE:
+			break;
 
 		case GAME_STATE:
+			camOn = true;
 			CreateGameScene();
 			break;
 	}
+	
+	ToggleCamControl(camOn);
 }
 
 function DoSelectionGrid(selectionGridInt : int, selectionStrings : String[])
 {
-	return GUI.SelectionGrid(Rect((Screen.width/2 - (BUTTON_W/2)),
-								  (Screen.height/2 - (((selectionStrings.Length/BUTTONS_PER_ROW)*BUTTON_H)/2)),
-								  BUTTON_W, BUTTON_H),
-							 selectionGridInt, selectionStrings, BUTTONS_PER_ROW);
+	return GUILayout.SelectionGrid(selectionGridInt, selectionStrings, BUTTONS_PER_ROW);
 }
 
 function DoInitGUI()
@@ -138,11 +155,17 @@ function DoSetupGUI()
 {
 	GUI.backgroundColor = Color.black;
 	GUI.color = Color.green;
-	
+
+	GUILayout.BeginArea(Rect(Screen.width*0.25, Screen.height*0.2, Screen.width*0.5, Screen.height*0.5));
+
 	switch(setupStep)
 	{
 		case 0:
-			GUI.TextArea(Rect(Screen.width/2-75, Screen.height/2-50, 150, 100), "Forkers: Offensive, Branchers: Defensive, Both: Play with both");
+			GUILayout.BeginHorizontal();
+			GUILayout.FlexibleSpace();
+			GUILayout.TextArea("Forkers: Offensive,\nBranchers: Defensive,\nBoth: Play with both");
+			GUILayout.FlexibleSpace();
+			GUILayout.EndHorizontal();
 
 			var selectionStrings : String[] = ["Forkers", "Branchers", "Both"];
 			var selectionGridInt : int = 99;
@@ -167,31 +190,36 @@ function DoSetupGUI()
 		default:
 			break;
 	}
+	
+	GUILayout.EndArea();
 }
 
 function DoGameboardGUI()
 {
-	if(escapeMenuOn)
-	{
-		var selectionGridInt : int = 255;
-		var selectionStrings : String[] = ["Return", "Quit"];
+}
 
-		// Show the Escape menu GUI
-		selectionGridInt = GUI.SelectionGrid(Rect (Screen.width/2, Screen.height/2, 1, 1), selectionGridInt, selectionStrings, 1);
-		switch(selectionGridInt)
-		{
-			case 0:
-				ToggleEscapeMenu();
-				break;
-			case 1:
-				Application.LoadLevel("init_scene");
-				break;
-		}
-	}
-	else
+function DoMenuGUI()
+{
+
+	GUILayout.BeginArea(Rect(Screen.width*0.25, Screen.height*0.2, Screen.width*0.5, Screen.height*0.5));
+
+
+	var selectionGridInt : int = 255;
+	var selectionStrings : String[] = ["Return", "Quit"];
+
+	// Show the Escape menu GUI
+	selectionGridInt = DoSelectionGrid(selectionGridInt, selectionStrings);
+	switch(selectionGridInt)
 	{
-		// Show the Gameboard panels and selections
+		case 0:
+			ToggleEscapeMenu();
+			break;
+		case 1:
+			Application.LoadLevel("init_scene");
+			break;
 	}
+	
+	GUILayout.EndArea();
 }
 
 
@@ -213,9 +241,15 @@ function CreateGameScene()
 {
 	gameState = GAME_STATE;
 	
-	// Setup the Gameboard itself
-	CreateGameboard();
+	if(!gameStarted)
+	{
+		// Setup the Gameboard itself
+		CreateGameboard();
+		gameStarted = true;
+	}
 }
+
+
 
 function SetupPiece(piece : Transform, x : int, y : int, z : float, name : String)
 {
@@ -230,6 +264,11 @@ function SetupPiece(piece : Transform, x : int, y : int, z : float, name : Strin
 		piece.parent = gameObject.Find(String.Format("HexPlain/_{0}_{1}_", x, y)).transform;
 		piece.transform.localPosition = new Vector3(0,0, piece.transform.localPosition.z);
 	}
+}
+
+function MoveTo(piece : Transform, x : int, y : int)
+{
+	GameObject.Find(String.Format("HexPlain/_{0}_{1}_", x, y)).GetComponent(CellScript).MoveTo(piece);
 }
 
 function CreateBush(x : int, y : int)
@@ -285,26 +324,31 @@ function CreateGameboard()
 			}
 		}
 	}
+	
+	var playerPos : Vector2 = Vector2(3,3);
+	var opponentPos : Vector2 = Vector2(28,28);
 
 	switch(playerType)
 	{
 		case PLAYER_TYPE_FORKER:
 			//Create a base.
-			CreateBase(3, 3, "PlayerBase", true, PLAYER_TYPE_FORKER);
+			CreateBase(playerPos.x, playerPos.y, "PlayerBase", true, PLAYER_TYPE_FORKER);
 			//Create a base.
-			CreateBase(28, 28, "OpponentBase", false, PLAYER_TYPE_BRANCHER);
+			CreateBase(opponentPos.x, opponentPos.y, "OpponentBase", false, PLAYER_TYPE_BRANCHER);
 			break;
 		case PLAYER_TYPE_BRANCHER:
 			//Create a base.
-			CreateBase(3, 3, "PlayerBase", true, PLAYER_TYPE_BRANCHER);
+			CreateBase(playerPos.x, playerPos.y, "PlayerBase", true, PLAYER_TYPE_BRANCHER);
 			//Create a base.
-			CreateBase(28, 28, "OpponentBase", false, PLAYER_TYPE_FORKER);
+			CreateBase(opponentPos.x, opponentPos.y, "OpponentBase", false, PLAYER_TYPE_FORKER);
 			break;
 		case PLAYER_TYPE_BOTH:
 			//Create a base.
-			CreateBase(3, 3, "PlayerBase", true, PLAYER_TYPE_BOTH);
+			CreateBase(playerPos.x, playerPos.y, "PlayerBase", true, PLAYER_TYPE_BOTH);
 			//Create a base.
-			CreateBase(28, 28, "OpponentBase", false, PLAYER_TYPE_BOTH);
+			CreateBase(opponentPos.x, opponentPos.y, "OpponentBase", false, PLAYER_TYPE_BOTH);
 			break;
-	}	
+	}
+	
+	GetCamControl().SetPosition(playerPos);
 }

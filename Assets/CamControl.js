@@ -1,6 +1,6 @@
 #pragma strict
 
-var camHeight : int = 15;
+var camHeight : int = 12;
 var camPos : Vector3 = Vector3(32,camHeight,32);
 var posMax : int = 10;
 var posMin : int = -10;
@@ -12,6 +12,7 @@ public var currentSelection : GameObject; // hold Fire1-selected
 private var originalColorOfSelected : Color;
 public var targetedSelection : GameObject; // hold Fire2-selected
 private var originalColorOfTargeted : Color;
+public var mouseoverTarget : GameObject;
 
 function Start ()
 {
@@ -21,7 +22,6 @@ function Start ()
 
 function Update ()
 {
-
 	var camPos : Vector3 = gameObject.Find("Main Camera").transform.position;
 	
 	// Camera scrolling
@@ -38,6 +38,18 @@ function Update ()
 	DoMousePicking();
 	
 	gameObject.Find("Main Camera").transform.position = camPos;
+}
+
+function SetPosition(position : Vector3)
+{
+	var y : float = camPos.y;
+	camPos = position;
+	camPos.y = y;
+}
+
+function GetSelectedGUIRect()
+{
+	return Rect(Screen.width*0.65, Screen.height*0.7, Screen.width*0.35, Screen.height*0.3);
 }
 
 function OnGUI()
@@ -60,10 +72,12 @@ function OnGUI()
 	}
 }
 
-function GetSelectedGUIRect()
+/*
+function Mouseover(mouseoverTarget : Transform)
 {
-	return Rect(Screen.width*0.5, Screen.height*0.7, Screen.width*0.25, Screen.height*0.2);
+	mouseoverTarget.GetComponent(CellScript).OnMouseOver();
 }
+*/
 
 function DoMousePicking()
 {
@@ -72,17 +86,18 @@ function DoMousePicking()
 	var hit : RaycastHit;
 	var layerMask : LayerMask = -1;
 	
+	//layerMask = 1 << LayerMask.NameToLayer("GridCells");
+	//Mouseover(hit.transform);
+	
 	if(Input.GetButtonDown("Fire1"))
-	{			
-		//Debug.Log("Fire1 pressed");
+	{
 		layerMask = 1 << LayerMask.NameToLayer("Forkers") |
 					1 << LayerMask.NameToLayer("Branchers") |
 					1 << LayerMask.NameToLayer("Buildings");
-		  
+
 		// Check if we hit a selectable object like a unit or building
 		if(Physics.Raycast(ray, hit, Mathf.Infinity, layerMask))
 		{
-			//SelectObject(GameObject.Find(hit.transform.name));
 			SelectObject(hit.transform.gameObject);
 		}
 	}
@@ -97,7 +112,6 @@ function DoMousePicking()
 		// Operate on targetedSelection accordingly
 		if(Physics.Raycast(ray, hit, Mathf.Infinity, layerMask))
 		{
-			//TargetObject(GameObject.Find(hit.transform.name));
 			TargetObject(hit.transform.gameObject);
 		}
 	}
@@ -112,6 +126,7 @@ function ClearCurrentSelection()
 	}
 }
 
+/*
 function ClearCurrentTargeted()
 {
 	if(null != targetedSelection)
@@ -120,29 +135,24 @@ function ClearCurrentTargeted()
 		targetedSelection = null;
 	}
 }
+*/
 
 function SelectObject(selected : GameObject)
 {
 	ClearCurrentSelection();
-	ClearCurrentTargeted();
+	//ClearCurrentTargeted();
 	
 	currentSelection = selected;
-	originalColorOfSelected = currentSelection.renderer.material.color;
-	currentSelection.renderer.material.color = Color.magenta;
+	//originalColorOfSelected = currentSelection.renderer.material.color;
+	//currentSelection.renderer.material.color = Color.magenta;
 	
-	// Update the UI to describe the object that was clicked
 }
 
 function TargetObject(targeted : GameObject)
 {
-	ClearCurrentTargeted();
+	//ClearCurrentTargeted();
 	
 	targetedSelection = targeted;
-	originalColorOfTargeted = targetedSelection.renderer.material.color;
-	targetedSelection.renderer.material.color = Color.green;
-}
-
-function BlinkTargeted()
-{
-	//TODO:
+	//originalColorOfTargeted = targetedSelection.renderer.material.color;
+	//targetedSelection.renderer.material.color = Color.green;
 }

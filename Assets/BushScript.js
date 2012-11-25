@@ -38,3 +38,18 @@ function GetBranchCount()
 {
 	return branchCount;
 }
+
+function GetCellScript()
+{
+	return GameObject.Find(String.Format("HexPlain/_{0}_{1}_", world_position.x, world_position.y)).GetComponent(CellScript);
+}
+
+
+function Target()
+{
+	GetCellScript().Targeted(true);
+}
+function UnTarget()
+{
+	GetCellScript().Targeted(false);
+}

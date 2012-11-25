@@ -1,11 +1,6 @@
 #pragma strict
 
-private var HEADING_STRAIGHT = 0;
-private var HEADING_LEFT = 60;
-private var HEADING_BACK_LEFT = 120;
-private var HEADING_RIGHT = -60;
-private var HEADING_BACK_RIGHT = -120;
-private var HEADING_BACK = 180;
+
 
 // Public
 var fork : Transform;
@@ -16,6 +11,14 @@ var home_base : Transform = null;
 var unitType : String;
 var ACTION_POINTS_PER_TURN : int = 3;
 var dead : boolean = false;
+
+private var HEADING_STRAIGHT = 0;
+private var HEADING_LEFT = 60;
+private var HEADING_BACK_LEFT = 120;
+private var HEADING_RIGHT = -60;
+private var HEADING_BACK_RIGHT = -120;
+private var HEADING_BACK = 180;
+
 var heading : int = HEADING_STRAIGHT;
 
 // Stats
@@ -71,6 +74,7 @@ function SetTarget(x : int, y : int)
 function SetPosition(x : int, y : int)
 {
 	world_position = new Vector2(x,y);
+	RotateToHeading();
 }
 
 function GetPosition()
@@ -108,21 +112,17 @@ function SetupPiece(piece : Transform, x : int, y : int, z : float, name : Strin
 	GameObject.Find("HexPlain").GetComponent(HexBoardScript).SetupPiece(piece, x, y, z, name);
 }
 
-function CreateFork(name : String)
+function CreateFork()
 {
 	var forkClone : Transform = Instantiate(fork);
-	
 	forkCount++;
-	
 	return forkClone;
 }
 
-function CreateFortification(name : String)
+function CreateFortification()
 {
 	var fortificationClone : Transform = Instantiate(fortification);
-	
 	fortificationCount++;
-	
 	return fortificationClone;
 }
 
@@ -135,8 +135,8 @@ function FormatUnitName(item : String)
 
 function RotateToHeading()
 {
-	gameObject.transform.rotation = Quaternion.identity;
-	gameObject.transform.Rotate(new Vector3(0,0,heading));
+	gameObject.transform.localRotation = Quaternion.identity;
+	gameObject.transform.Rotate(new Vector3(0,heading,0));
 }
 
 function SetHeading(newHeading : int)
@@ -150,101 +150,39 @@ function GetHeading()
 	return heading;
 }
 
+function GetCellScript()
+{
+	return GameObject.Find(String.Format("HexPlain/_{0}_{1}_", world_position.x, world_position.y)).GetComponent(CellScript);
+}
+
+function GetNeighbor(direction : int)
+{
+	var neighborDir = (heading + direction);
+	neighborDir = ((neighborDir-180)%360) + (neighborDir < 180 ? 180 : -180);
+	neighborDir = (neighborDir == -180) ? 180 : neighborDir;
+	Debug.Log(neighborDir);
+	
+	var neighborPos : Vector2 = GetCellScript().GetNeighbor(neighborDir);
+	return neighborPos;
+}
+
+function GetMapSize()
+{
+	return GameObject.Find("HexPlain").GetComponent(HexBoardScript).GetSize();
+}
+
 function PositionValid(position : Vector2)
 {
-	if(position.x >= 0 || position.y >= 0)
-		return true;
-	else
+	if(0 > position.x || GetMapSize().x < position.x ||
+	   0 > position.y || GetMapSize().y < position.y)
 		return false;
+	
+	return true;
 }
 
-function GetNeighbor(relativeDir : int)
+function TossItem(item : Transform, toss_direction : int)
 {
-	var bestResult : Vector2 = GetPosition();
-	var dirModifier : int = 1;
-		
-	switch(heading)
-	{
-		case HEADING_BACK:
-			dirModifier = -1;
-		case HEADING_STRAIGHT:
-			switch(relativeDir)
-			{
-				case HEADING_BACK:
-				case HEADING_STRAIGHT:
-					bestResult.x += 1 * dirModifier;
-					break;
-					
-				case HEADING_BACK_RIGHT:
-					bestResult.x -= 1 * dirModifier;
-				case HEADING_RIGHT:
-					bestResult.y += 1 * dirModifier;
-					break;
-					
-				case HEADING_BACK_LEFT:
-					bestResult.x += 1 * dirModifier;
-				case HEADING_LEFT:
-					bestResult.y -= 1 * dirModifier;
-					break;
-			}
-			break;
-			
-		case HEADING_BACK_LEFT:
-			dirModifier = -1;
-		case HEADING_RIGHT:
-		switch(relativeDir)
-			{
-				case HEADING_BACK:
-				case HEADING_STRAIGHT:
-					bestResult.y += 1 * dirModifier;
-					break;
-					
-				case HEADING_BACK_RIGHT:
-					bestResult.y -= 1 * dirModifier;
-				case HEADING_RIGHT:
-					bestResult.x += 1 * dirModifier;
-					break;
-					
-				case HEADING_BACK_LEFT:
-					bestResult.y -= 1 * dirModifier;
-				case HEADING_LEFT:
-					bestResult.x += 1 * dirModifier;
-					break;
-			}
-			break;
-			
-		case HEADING_BACK_RIGHT:
-			dirModifier = -1;
-		case HEADING_LEFT:
-			switch(relativeDir)
-			{
-				case HEADING_BACK:
-				case HEADING_STRAIGHT:
-					bestResult.y -= 1 * dirModifier;
-					break;
-					
-				case HEADING_BACK_RIGHT:
-					bestResult.y += 1 * dirModifier;
-				case HEADING_RIGHT:
-					bestResult.x += 1 * dirModifier;
-					break;
-					
-				case HEADING_BACK_LEFT:
-					bestResult.x -= 1 * dirModifier;
-				case HEADING_LEFT:
-					bestResult.y -= 1 * dirModifier;
-					break;
-			}
-
-			break;
-	}
-		
-	return bestResult;
-}
-
-function TossItem(item : Transform)
-{
-	var neighboringPos : Vector2 = GetNeighbor(HEADING_STRAIGHT);
+	var neighboringPos : Vector2 = GetNeighbor(toss_direction);
 	SetupPiece(item, neighboringPos.x, neighboringPos.y, item_placement, item.name);
 }
 
@@ -252,12 +190,24 @@ function GraspItem(item : Transform)
 {
 	if(null != in_hand)
 	{
-		TossItem(in_hand);
+		TossItem(in_hand, HEADING_RIGHT);
 	}
 	
 	item.parent = gameObject.transform;
-	//item.localPosition.x++;
-	//item.localPosition.y++;
+	if(item.name.Contains("fork"))
+	{
+		item.localPosition = Vector3(-1,1,0);
+		item.localRotation = Quaternion.identity;
+		item.Rotate(Vector3(0,180,90));
+		item.localScale = Vector3(0.2,0.2,0.2);
+	}
+	else if(item.name.Contains("fortification"))
+	{
+		item.localPosition = Vector3(-1,1,0);
+		item.localScale = Vector3(0.2,0.2,0.2);
+	}
+	
+	item.GetComponent(PickupScript).SetPosition(GetPosition().x,GetPosition().y);
 }
 
 function CreateItem()
@@ -267,14 +217,14 @@ function CreateItem()
 	switch(unitType)
 	{
 		case "forker":
-			item = CreateFork(name);
+			item = CreateFork();
 			break;
 		case "brancher":
-			item = CreateFortification(name);
+			item = CreateFortification();
 			break;
 	}
 	
-	//GameObject.Find(name).GetComponent(PickupScript).SetPosition(x,y);
+	item.name = name;
 	
 	GraspItem(item);
 }
@@ -317,7 +267,6 @@ function DoSelectedGUI(rect : Rect)
 	}
 	
 	GUILayout.FlexibleSpace();
-	
 	
 	if(GUILayout.Button("Kill Unit"))
 	{

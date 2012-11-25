@@ -17,7 +17,7 @@ private var construction_progress : float = 0;
 private var world_position : Vector2;
 
 var MAX_UNITS_PER_BASE = 15;
-var CONSTRUCTION_TIME : float = 10.0;
+var CONSTRUCTION_TIME : float = 2;
 var UNIT_DROP_X : float = 0;
 var UNIT_DROP_Y : float = 0;
 
