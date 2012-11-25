@@ -14,8 +14,6 @@ private var PLAYER_TYPE_BRANCHER = "brancher";
 private var PLAYER_TYPE_BOTH = "both";
 
 // public
-var base : Transform;
-var branch_bush : Transform;
 var init_number_of_bushes : int;
 var z_placement : float;
 var groundTexture1 : Texture2D;
@@ -82,7 +80,7 @@ function ToggleCamControl(val : boolean)
 
 function GetSize()
 {
-	return new Vector2(hi_index, hi_index);
+	return Vector2(hi_index, hi_index);
 }
 
 function ToggleEscapeMenu()
@@ -249,8 +247,49 @@ function CreateGameScene()
 	}
 }
 
+function PositionValid(position : Vector2)
+{
+	if(0 > position.x || GetSize().x < position.x ||
+	   0 > position.y || GetSize().y < position.y)
+		return false;
+	
+	return true;
+}
 
+function GetCellScript(x,y)
+{
+	return GameObject.Find(String.Format("HexPlain/_{0}_{1}_", x, y)).GetComponent(CellScript);
+}
 
+function CreateBush(x : int, y : int)
+{	
+	var result : boolean = false;
+	
+	if(PositionValid(Vector2(x,y)))
+	{
+		result = GetCellScript(x,y).CreateBush(bushesPlaced);
+		if(result)
+		{
+			bushesPlaced++;
+		}
+	}
+	
+	return result;
+}
+
+function CreateBase(x : int, y : int, name : String, player : boolean, baseType : String)
+{
+	var result : boolean = false;
+
+	if(PositionValid(Vector2(x,y)))
+	{
+		result = GetCellScript(x,y).CreateBase(name, player, baseType);
+	}
+	
+	return result;
+}
+
+/*
 function SetupPiece(piece : Transform, x : int, y : int, z : float, name : String)
 {
 	if(0 > x || 0 > y)
@@ -265,34 +304,11 @@ function SetupPiece(piece : Transform, x : int, y : int, z : float, name : Strin
 		piece.transform.localPosition = new Vector3(0,0, piece.transform.localPosition.z);
 	}
 }
+*/
 
 function MoveTo(piece : Transform, x : int, y : int)
 {
 	GameObject.Find(String.Format("HexPlain/_{0}_{1}_", x, y)).GetComponent(CellScript).MoveTo(piece);
-}
-
-function CreateBush(x : int, y : int)
-{
-	var name : String = String.Format("branchbush_{0}", bushesPlaced);
-	var bushClone : Transform = Instantiate(branch_bush);
-	
-	SetupPiece(bushClone, x, y, 3, name);
-	
-	GameObject.Find(name).GetComponent(BushScript).SetPosition(x,y);
-	bushesPlaced++;
-}
-
-function CreateBase(x : int, y : int, name : String, player : boolean, baseType : String)
-{
-	var baseClone : Transform = Instantiate(base);
-	SetupPiece(baseClone, x, y, z_placement, name);
-	baseClone.localPosition.x -= 0.25;
-	baseClone.localPosition.y -= 0.25;
-	
-	var baseScript : BaseScript = GameObject.Find(name).GetComponent(BaseScript);
-	baseScript.SetBaseType(baseType);
-	baseScript.SetPlayerType(player);
-	baseScript.SetPosition(x,y);
 }
 
 function CreateGameboard()
@@ -332,21 +348,21 @@ function CreateGameboard()
 	{
 		case PLAYER_TYPE_FORKER:
 			//Create a base.
-			CreateBase(playerPos.x, playerPos.y, "PlayerBase", true, PLAYER_TYPE_FORKER);
+			CreateBase(playerPos.x, playerPos.y, "player_base", true, PLAYER_TYPE_FORKER);
 			//Create a base.
-			CreateBase(opponentPos.x, opponentPos.y, "OpponentBase", false, PLAYER_TYPE_BRANCHER);
+			CreateBase(opponentPos.x, opponentPos.y, "opponent_base", false, PLAYER_TYPE_BRANCHER);
 			break;
 		case PLAYER_TYPE_BRANCHER:
 			//Create a base.
-			CreateBase(playerPos.x, playerPos.y, "PlayerBase", true, PLAYER_TYPE_BRANCHER);
+			CreateBase(playerPos.x, playerPos.y, "player_base", true, PLAYER_TYPE_BRANCHER);
 			//Create a base.
-			CreateBase(opponentPos.x, opponentPos.y, "OpponentBase", false, PLAYER_TYPE_FORKER);
+			CreateBase(opponentPos.x, opponentPos.y, "opponent_base", false, PLAYER_TYPE_FORKER);
 			break;
 		case PLAYER_TYPE_BOTH:
 			//Create a base.
-			CreateBase(playerPos.x, playerPos.y, "PlayerBase", true, PLAYER_TYPE_BOTH);
+			CreateBase(playerPos.x, playerPos.y, "player_base", true, PLAYER_TYPE_BOTH);
 			//Create a base.
-			CreateBase(opponentPos.x, opponentPos.y, "OpponentBase", false, PLAYER_TYPE_BOTH);
+			CreateBase(opponentPos.x, opponentPos.y, "opponent_base", false, PLAYER_TYPE_BOTH);
 			break;
 	}
 	

@@ -14,12 +14,14 @@ var unit_creation_waypoint : Vector2;
 private var current_construction : String;
 private var construction_in_progress : boolean = false;
 private var construction_progress : float = 0;
-private var world_position : Vector2;
+private var world_position : Vector2 = Vector2(-1,-1);
 
 var MAX_UNITS_PER_BASE = 15;
 var CONSTRUCTION_TIME : float = 2;
 var UNIT_DROP_X : float = 0;
 var UNIT_DROP_Y : float = 0;
+
+var target_position : Vector2;
 
 function Start ()
 {
@@ -77,6 +79,26 @@ function InitializeBase()
 function SetPosition(x : int, y : int)
 {
 	world_position = new Vector2(x,y);
+	target_position = new Vector2(x,y);
+}
+
+function GetPosition() : Vector2
+{
+	return world_position;
+}
+
+function SetTarget(x : int, y : int)
+{
+	target_position = new Vector2(x,y);
+}
+
+function Selected(selected : boolean) : boolean
+{
+	// TODO: Do a Selected animation
+	
+	// TODO: React to being selected in some way
+		
+	return true;
 }
 
 function SetBaseType(type : String)
@@ -97,17 +119,17 @@ function SetBaseType(type : String)
 	}
 }
 
-function GetBaseType()
+function GetBaseType() : String
 {
 	return baseType;
 }
 
-function GetForkerCount()
+function GetForkerCount() : int
 {
 	return forkerCount;
 }
 
-function GetBrancherCount()
+function GetBrancherCount() : int
 {
 	return brancherCount;
 }
@@ -116,7 +138,7 @@ function SetPlayerType(isPlayer : boolean)
 {
 	player = isPlayer;
 }
-function IsPlayer()
+function IsPlayer() : boolean
 {
 	return player;
 }
@@ -127,7 +149,7 @@ function SetBaseColor(color : Color)
 	gameObject.transform.GetChild(0).renderer.material.color = color;
 }
 
-function FormatUnitName(unit : String)
+function FormatUnitName(unit : String) : String
 {
 	return String.Format("{0}_{1}_{2}",
 						unit,
@@ -139,8 +161,9 @@ function CreateUnit(unit : String)
 {
 	var name : String = FormatUnitName(unit);
 	var modifier : int = 1;
+	var newUnit : Transform;
 	
-	if(15 > gameObject.transform.position.x)
+	if(15 > world_position.y)
 	{
 		modifier *= -1;
 	}
@@ -151,42 +174,56 @@ function CreateUnit(unit : String)
 	switch(unit)
 	{
 		case "forker":
-			CreateForker(UNIT_DROP_X, UNIT_DROP_Y, name);
+			newUnit = CreateForker(UNIT_DROP_X, UNIT_DROP_Y, name);
 			break;
 		case "brancher":
-			CreateBrancher(UNIT_DROP_X, UNIT_DROP_Y, name);
+			newUnit = CreateBrancher(UNIT_DROP_X, UNIT_DROP_Y, name);
 			break;
 	}
 	
-	var unitScript = GameObject.Find(name).GetComponent(UnitScript);
+	var unitScript : UnitScript = newUnit.GetComponent(UnitScript);
 	unitScript.SetTeam(player);
 	unitScript.SetHomeBase(gameObject.transform);
-	unitScript.SetPosition(UNIT_DROP_X,UNIT_DROP_Y);
 }
 
+/*
 function SetupPiece(piece : Transform, x : int, y : int, z : float, name : String)
 {
 	GameObject.Find("HexPlain").GetComponent(HexBoardScript).SetupPiece(piece, x, y, z, name);
 }
+*/
 
-function CreateForker(x : int, y : int, name : String)
+function MoveTo(piece : Transform, x : int, y : int)
+{
+	GameObject.Find(String.Format("HexPlain/_{0}_{1}_", x, y)).GetComponent(CellScript).MoveTo(piece);
+}
+
+function CreateForker(x : int, y : int, name : String) : Transform
 {
 	var forkerClone : Transform = Instantiate(forker);
+	forkerClone.name = name;
 	
-	SetupPiece(forkerClone, x, y, z_placement, name);
+	/*SetupPiece(forkerClone, x, y, z_placement, name);*/
+	MoveTo(forkerClone, x, y);
 	
 	forkerCount++;
 	number_of_forkers_alive++;
+	
+	return forkerClone;
 }
 
-function CreateBrancher(x : int, y : int, name : String)
+function CreateBrancher(x : int, y : int, name : String) : Transform
 {
 	var brancherClone : Transform = Instantiate(brancher);
+	brancherClone.name = name;
 	
-	SetupPiece(brancherClone, x, y, z_placement, name);
+	/*SetupPiece(brancherClone, x, y, z_placement, name);*/
+	MoveTo(brancherClone, x, y);
 	
 	brancherCount++;
 	number_of_branchers_alive++;
+	
+	return brancherClone;
 }
 
 function UnitDeath(unit : String)

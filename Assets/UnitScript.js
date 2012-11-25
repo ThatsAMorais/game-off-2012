@@ -28,18 +28,15 @@ private var fortificationCount : int = 0;
 // States and Status
 private var newly_created : boolean = true;
 private var branches_held : int = 0;
-private var world_position : Vector2;
+private var world_position : Vector2 = Vector2(-1,-1);
 private var in_hand : Transform = null;
 
+private var selected : boolean = false;
 private var action_points = ACTION_POINTS_PER_TURN;
 private var target_position : Vector2;
 
 // Animate variables
 private var newly_created_rotation = 0;
-
-// MouseOver //
-private var startcolor : Color;
-
 
 function Start ()
 {
@@ -77,12 +74,12 @@ function SetPosition(x : int, y : int)
 	RotateToHeading();
 }
 
-function GetPosition()
+function GetPosition() : Vector2
 {
 	return world_position;
 }
 
-function GetUnitType()
+function GetUnitType() : String
 {
 	return unitType;
 }
@@ -107,26 +104,28 @@ function DoNewUnitAnimation()
 	}
 }
 
+/*
 function SetupPiece(piece : Transform, x : int, y : int, z : float, name : String)
 {
 	GameObject.Find("HexPlain").GetComponent(HexBoardScript).SetupPiece(piece, x, y, z, name);
 }
+*/
 
-function CreateFork()
+function CreateFork() : Transform
 {
 	var forkClone : Transform = Instantiate(fork);
 	forkCount++;
 	return forkClone;
 }
 
-function CreateFortification()
+function CreateFortification() : Transform
 {
 	var fortificationClone : Transform = Instantiate(fortification);
 	fortificationCount++;
 	return fortificationClone;
 }
 
-function FormatUnitName(item : String)
+function FormatUnitName(item : String) : String
 {
 	return String.Format("{0}_{1}",
 						item,
@@ -145,33 +144,35 @@ function SetHeading(newHeading : int)
 	RotateToHeading();
 }
 
-function GetHeading()
+function GetHeading() : int
 {
 	return heading;
 }
 
-function GetCellScript()
+function GetCellScript(x : int, y : int) : CellScript
 {
-	return GameObject.Find(String.Format("HexPlain/_{0}_{1}_", world_position.x, world_position.y)).GetComponent(CellScript);
+	var pos : Vector2 = new Vector2((x == -1) ? world_position.x : x, (y == -1) ? world_position.y : y);
+	
+	return GameObject.Find(String.Format("HexPlain/_{0}_{1}_", pos.x, pos.y)).GetComponent(CellScript);
 }
 
-function GetNeighbor(direction : int)
+function GetNeighbor(direction : int) : Vector2
 {
 	var neighborDir = (heading + direction);
 	neighborDir = ((neighborDir-180)%360) + (neighborDir < 180 ? 180 : -180);
 	neighborDir = (neighborDir == -180) ? 180 : neighborDir;
 	Debug.Log(neighborDir);
 	
-	var neighborPos : Vector2 = GetCellScript().GetNeighbor(neighborDir);
+	var neighborPos : Vector2 = GetCellScript(world_position.x, world_position.y).GetNeighbor(neighborDir);
 	return neighborPos;
 }
 
-function GetMapSize()
+function GetMapSize() : Vector2
 {
 	return GameObject.Find("HexPlain").GetComponent(HexBoardScript).GetSize();
 }
 
-function PositionValid(position : Vector2)
+function PositionValid(position : Vector2) : boolean
 {
 	if(0 > position.x || GetMapSize().x < position.x ||
 	   0 > position.y || GetMapSize().y < position.y)
@@ -180,17 +181,38 @@ function PositionValid(position : Vector2)
 	return true;
 }
 
-function TossItem(item : Transform, toss_direction : int)
+function TossItem(item : Transform) : boolean
 {
-	var neighboringPos : Vector2 = GetNeighbor(toss_direction);
-	SetupPiece(item, neighboringPos.x, neighboringPos.y, item_placement, item.name);
+	/*SetupPiece(item, neighboringPos.x, neighboringPos.y, item_placement, item.name);*/
+	
+	var result : boolean = false;
+	
+	if(false == GetCellScript(world_position.x, world_position.y).MoveTo(item))
+	{
+		var current_heading = HEADING_BACK;
+		var neighbor = GetNeighbor(current_heading);
+
+		while(false == GetCellScript(neighbor.x, neighbor.y).MoveTo(item))
+		{
+			current_heading += HEADING_RIGHT;
+			
+			if((-1 * HEADING_BACK) <= current_heading)
+			{
+				break;
+			}
+			
+			neighbor = GetNeighbor(current_heading);
+		}
+	}
+	
+	return result;
 }
 
 function GraspItem(item : Transform)
 {
 	if(null != in_hand)
 	{
-		TossItem(in_hand, HEADING_RIGHT);
+		TossItem(in_hand);
 	}
 	
 	item.parent = gameObject.transform;
@@ -207,7 +229,7 @@ function GraspItem(item : Transform)
 		item.localScale = Vector3(0.2,0.2,0.2);
 	}
 	
-	item.GetComponent(PickupScript).SetPosition(GetPosition().x,GetPosition().y);
+	item.GetComponent(PickupScript).SetPosition(GetPosition().x, GetPosition().y);
 }
 
 function CreateItem()
@@ -239,7 +261,7 @@ function SetTeam(teamPlayer : boolean)
 	team_player = teamPlayer;
 }
 
-function GetForkCount()
+function GetForkCount() : int
 {
 	return forkCount;
 }
@@ -252,7 +274,7 @@ function Kill()
 }
 
 
-function GetFortificationCount()
+function GetFortificationCount() : int
 {
 	return fortificationCount;
 }
@@ -274,6 +296,15 @@ function DoSelectedGUI(rect : Rect)
 	}
 
 	GUILayout.EndArea();
+}
+
+function Selected(selected : boolean) : boolean
+{
+	// TODO: Do a Selected animation
+	
+	// TODO: React to being selected in some way
+		
+	return true;
 }
 
 function FindPathTo(x : int, y : int)

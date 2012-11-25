@@ -8,11 +8,11 @@ var htMax : int = 12;
 var htMin : int = 4;
 var camOrigin : GameObject;
 
-public var currentSelection : GameObject; // hold Fire1-selected
-private var originalColorOfSelected : Color;
-public var targetedSelection : GameObject; // hold Fire2-selected
-private var originalColorOfTargeted : Color;
-public var mouseoverTarget : GameObject;
+public var currentSelection : Transform; // hold Fire1-selected
+//private var originalColorOfSelected : Color;
+public var targetedSelection : Transform; // hold Fire2-selected
+//private var originalColorOfTargeted : Color;
+public var mouseoverTarget : Transform;
 
 function Start ()
 {
@@ -45,6 +45,7 @@ function SetPosition(position : Vector3)
 	var y : float = camPos.y;
 	camPos = position;
 	camPos.y = y;
+	gameObject.transform.localPosition = camPos;
 }
 
 function GetSelectedGUIRect()
@@ -56,7 +57,7 @@ function OnGUI()
 {
 	if(null != currentSelection)
 	{
-		if(currentSelection.name.Contains("Base"))
+		if(currentSelection.name.Contains("base"))
 		{
 			currentSelection.GetComponent(BaseScript).DoSelectedGUI(GetSelectedGUIRect());
 		}
@@ -72,12 +73,12 @@ function OnGUI()
 	}
 }
 
-/*
-function Mouseover(mouseoverTarget : Transform)
+function Mouseover(mouseover : Transform)
 {
-	mouseoverTarget.GetComponent(CellScript).OnMouseOver();
+	ClearCurrentMouseover();
+	mouseoverTarget = mouseover;
+	mouseoverTarget.GetComponent(CellScript).MousedOver();
 }
-*/
 
 function DoMousePicking()
 {
@@ -86,33 +87,40 @@ function DoMousePicking()
 	var hit : RaycastHit;
 	var layerMask : LayerMask = -1;
 	
-	//layerMask = 1 << LayerMask.NameToLayer("GridCells");
-	//Mouseover(hit.transform);
+	layerMask = 1 << LayerMask.NameToLayer("GridCells");
 	
 	if(Input.GetButtonDown("Fire1"))
 	{
-		layerMask = 1 << LayerMask.NameToLayer("Forkers") |
+		//Debug.Log("Fire2 pressed");
+		/*layerMask = 1 << LayerMask.NameToLayer("Forkers") |
 					1 << LayerMask.NameToLayer("Branchers") |
-					1 << LayerMask.NameToLayer("Buildings");
+					1 << LayerMask.NameToLayer("Buildings");*/
 
 		// Check if we hit a selectable object like a unit or building
 		if(Physics.Raycast(ray, hit, Mathf.Infinity, layerMask))
 		{
-			SelectObject(hit.transform.gameObject);
+			SelectObject(hit.transform);
 		}
 	}
-	
-	if((null != currentSelection) && (Input.GetButtonUp("Fire2")))
+	else if((null != currentSelection) && (Input.GetButtonUp("Fire2")))
 	{
 		//Debug.Log("Fire2 pressed");
-		layerMask = 1 << LayerMask.NameToLayer("Selectable") | 
+		/*layerMask = 1 << LayerMask.NameToLayer("Selectable") | 
 					1 << LayerMask.NameToLayer("Trees") | 
-					1 << LayerMask.NameToLayer("Buildings");
+					1 << LayerMask.NameToLayer("Buildings");*/
 					
 		// Operate on targetedSelection accordingly
 		if(Physics.Raycast(ray, hit, Mathf.Infinity, layerMask))
 		{
-			TargetObject(hit.transform.gameObject);
+			TargetObject(hit.transform);
+		}
+	}
+	else
+	{
+		// Check if we hit a selectable object like a unit or building
+		if(Physics.Raycast(ray, hit, Mathf.Infinity, layerMask))
+		{
+			Mouseover(hit.transform);
 		}
 	}
 }
@@ -121,23 +129,34 @@ function ClearCurrentSelection()
 {
 	if(null != currentSelection)
 	{
-		currentSelection.renderer.material.color = originalColorOfSelected;
+		//currentSelection.renderer.material.color = originalColorOfSelected;
+		currentSelection.GetComponent(CellScript).Selected(false);
 		currentSelection = null;
 	}
 }
 
-/*
+
 function ClearCurrentTargeted()
 {
 	if(null != targetedSelection)
 	{
-		targetedSelection.renderer.material.color = originalColorOfTargeted;
+		//targetedSelection.renderer.material.color = originalColorOfTargeted;
+		targetedSelection.GetComponent(CellScript).Targeted(true);
 		targetedSelection = null;
 	}
 }
-*/
 
-function SelectObject(selected : GameObject)
+
+function ClearCurrentMouseover()
+{
+	if(null != mouseoverTarget)
+	{
+		mouseoverTarget.GetComponent(CellScript).MouseExited();
+		mouseoverTarget = null;
+	}
+}
+
+function SelectObject(selected : Transform)
 {
 	ClearCurrentSelection();
 	//ClearCurrentTargeted();
@@ -146,13 +165,18 @@ function SelectObject(selected : GameObject)
 	//originalColorOfSelected = currentSelection.renderer.material.color;
 	//currentSelection.renderer.material.color = Color.magenta;
 	
+	currentSelection.GetComponent(CellScript).Selected(true);
 }
 
-function TargetObject(targeted : GameObject)
+function TargetObject(targeted : Transform)
 {
-	//ClearCurrentTargeted();
+	ClearCurrentTargeted();
 	
 	targetedSelection = targeted;
 	//originalColorOfTargeted = targetedSelection.renderer.material.color;
 	//targetedSelection.renderer.material.color = Color.green;
+
+	var targetPos : Vector2 = targetedSelection.GetComponent(CellScript).GetPosition();
+	currentSelection.GetComponent(CellScript).Target(targetPos.x, targetPos.y);
+
 }

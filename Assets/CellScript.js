@@ -1,18 +1,23 @@
 #pragma strict
-//#pragma downcast
+
+var base : Transform;
+var branch_bush : Transform;
 
 private var inhabitant : Transform;
 private var inhabitant_occupied : boolean = false;
 var inhabitant_pos : Vector2 = new Vector2(0, 0);
-private var branch_bush : Transform;
-private var branch_bush_occupied : boolean = false;
-var branch_bush_pos : Vector2 = new Vector2(.5, -.5);
+
+/*
+private var bush : Transform;
+private var bush_occupied : boolean = false;
+var bush_pos : Vector2 = new Vector2(.5, -.5);
 private var item_drop_a : Transform;
 private var item_drop_a_occupied : boolean = false;
 var item_drop_a_pos : Vector2 = new Vector2(-.5, .5);
 private var item_drop_b : Transform;
 private var item_drop_b_occupied : boolean = false;
 var item_drop_b_pos : Vector2 = new Vector2(-.5, -.5);
+*/
 
 // This table corresponds to the one in UnitScript.js regarding HEADING
 private var NUMBER_OF_NEIGHBORS : int = 6;
@@ -72,28 +77,9 @@ private var mouseoverHighlightOn : boolean = false;
 private var mouseoverHighlightColor : Color = Color.yellow;
 private var mouseoverHighlightMod : float = 0.5;
 
-private var inhabitants = {};
+private var show_failed_target : boolean = false;
 
-/*
-// General Factory
-function makeStruct(names)
-{
-	var names = names.split(',');
-	var count = names.length;
-	
-	function constructor() {
-		for(var i=0; i < count; i++)
-		{
-			this[names[i]] = arguments[i];
-		}
-	}
-	
-	return constructor;
-}
-
-// Make a Cell "Inhabitant" class/struct
-var Inhabitant = makeStruct("transform,occupied,position");
-*/
+private var selectable : boolean = false;
 
 
 function Start () {
@@ -102,9 +88,7 @@ function Start () {
 	var delimiter : String = "_";
 	var coordStrings = gameObject.name.Split(delimiter.ToCharArray());
 	myLocation = new Vector2(parseInt(coordStrings[1]), parseInt(coordStrings[2]));
-	
-	// Set neighbors
-	SetNeighbors();
+	Debug.Log(String.Format("Cell: {0}",myLocation));
 
 	// Particle system off initially	
 	ToggleParticleSystem(false);
@@ -130,41 +114,127 @@ function Update ()
 	}
 }
 
-function OnMouseOver()
+function GetPosition() : Vector2
+{
+	return myLocation;
+}
+
+function MousedOver()
 {
 	mouseoverHighlightOn = true;
 }
 
-function OnMouseExit()
+function MouseExited()
 {
 	mouseoverHighlightOn = false;
 	mouseoverHighlightMod = 0.5;
 	ToggleParticleSystem(false);
 }
 
+function Target(x : int, y : int)
+{
+	var piece : Transform = GetInhabitant();
+	
+	if(selectable)
+	{
+		if(piece.name.Contains("forker") || piece.name.Contains("brancher"))
+		{
+			piece.GetComponent(UnitScript).SetTarget(x,y);
+		}
+		else if(piece.name.Contains("base"))
+		{
+			piece.GetComponent(BaseScript).SetTarget(x,y);
+		}
+	}
+}
+
 function Targeted(val : boolean)
 {
-	
-	targetedHighlightOn = val;
-	targetedHighlightMod = 0.5;
-	targetedHighlightTimediff = 0;
-	
-	if(!targetedHighlightOn)
+	if(false == val)
 	{
+		targetedHighlightOn = false;
+		targetedHighlightMod = 0.5;
 		ToggleParticleSystem(false);
+	}
+	else
+	{
+		if(SlotInhabited())
+		{
+			targetedHighlightOn = val;
+			targetedHighlightMod = 0.5;
+			targetedHighlightTimediff = 0;
+		}
 	}
 }
 
 function Selected(val : boolean)
 {
-	selectedHighlightOn = val;
-	selectedHighlightMod = 0.5;
-	
-	if(!selectedHighlightOn)
+	if(false == val)
 	{
+		selectedHighlightOn = false;
+		selectedHighlightMod = 0.5;
 		ToggleParticleSystem(false);
 	}
+	else
+	{
+		if(SlotInhabited())
+		{
+			var piece : Transform = GetInhabitant();
+
+			// Determine if the object here can even be selected so as to ignore further stimulus
+			if(piece.name.Contains("forker") || piece.name.Contains("brancher"))
+			{
+				selectable = piece.GetComponent(UnitScript).Selected(val);
+			}
+			else if(piece.name.Contains("base"))
+			{
+				selectable = piece.GetComponent(BaseScript).Selected(val);
+			}
+			else if(piece.name.Contains("bush"))
+			{
+				selectable = piece.GetComponent(BushScript).Selected(val);
+			}
+			else if(piece.name.Contains("branch") || piece.name.Contains("fork") || piece.name.Contains("fortification"))
+			{
+				selectable = piece.GetComponent(PickupScript).Selected(val);
+			}
+			
+			if(selectable)
+			{
+				selectedHighlightOn = true;
+				selectedHighlightMod = 0.5;
+			}
+		}
+	}
 }
+
+
+function DoSelectedGUI(rect : Rect)
+{
+	var piece : Transform = GetInhabitant();
+
+	if(selectable)
+	{
+		if(piece.name.Contains("forker") || piece.name.Contains("brancher"))
+		{
+			piece.GetComponent(UnitScript).DoSelectedGUI(rect);
+		}
+		else if(piece.name.Contains("base"))
+		{
+			piece.GetComponent(BaseScript).DoSelectedGUI(rect);
+		}
+		else if(piece.name.Contains("bush"))
+		{
+			piece.GetComponent(BushScript).DoSelectedGUI(rect);
+		}
+		else if(piece.name.Contains("branch") || piece.name.Contains("fork") || piece.name.Contains("fortification"))
+		{
+			piece.GetComponent(PickupScript).DoSelectedGUI(rect);
+		}
+	}
+}
+
+
 
 function SetPathHighlight(val : boolean, type : String)
 {
@@ -192,7 +262,7 @@ function SetPathHighlight(val : boolean, type : String)
 	}
 }
 
-function GetParticleSystem()
+function GetParticleSystem() : ParticleSystem
 {
 	return gameObject.GetComponent(ParticleSystem);
 }
@@ -212,7 +282,7 @@ function ToggleParticleSystem(on : boolean)
 	}
 }
 
-function FadeColor(color : Color, mod : float, speed : int)
+function FadeColor(color : Color, mod : float, speed : int) : float
 {
 	var direction : int = 100 > mod ? 1 : -1;
 	
@@ -234,7 +304,7 @@ function DoMouseoverHighlight()
 
 function DoTargetedHighlight()
 {
-	targetedHighlightTimediff = FadeColor(targetedHighlightColor, targetedHighlightMod, 10);
+	targetedHighlightTimediff += FadeColor(targetedHighlightColor, targetedHighlightMod, 10);
 	
 	if(targetedHighlightTimediff >= 2)
 	{
@@ -252,77 +322,64 @@ function DoPathHighlight()
 	FadeColor(pathHighlightColor, pathHighlightMod, 3);
 }
 
-
-
-function GetMapSize()
+function PositionValid(x : int, y : int) : boolean
 {
-	return GameObject.Find("HexPlain").GetComponent(HexBoardScript).GetSize();
-}
-
-function PositionValid(x : int, y : int)
-{
-	if((0 > x) || (GetMapSize().x < x) ||
-	   (0 > y) || (GetMapSize().y < y))
+	var size : Vector2 = GameObject.Find("HexPlain").GetComponent(HexBoardScript).GetSize();
+	
+	if((0 > x) || (size.x < x) ||
+	   (0 > y) || (size.y < y))
 		return false;
 	
 	return true;
 }
 
-function GetNeighbor(neighbor : int)
+function GetNeighbor(neighbor : int) : Vector2
 {
 	var neighborPos : Vector2 = Vector2(-1,-1);
 	
 	switch(neighbor)
 	{
 		case NEIGHBOR_AHEAD:
-			neighborPos = NEIGHBOR_AHEAD_POS;
+			if(PositionValid(myLocation.x+1, myLocation.y))
+				neighborPos =  Vector2(myLocation.x+1, myLocation.y);
 			break;
 		case NEIGHBOR_BEHIND:
-			neighborPos = NEIGHBOR_BEHIND_POS;
+			if(PositionValid(myLocation.x-1, myLocation.y))
+				neighborPos = Vector2(myLocation.x-1, myLocation.y);
 			break;
 		case NEIGHBOR_LEFT:
-			neighborPos = NEIGHBOR_LEFT_POS;
+			if(PositionValid(myLocation.x, myLocation.y-1))
+				neighborPos = Vector2(myLocation.x, myLocation.y-1);
 			break;
 		case NEIGHBOR_RIGHT:
-			neighborPos = NEIGHBOR_RIGHT_POS;
+			if(PositionValid(myLocation.x, myLocation.y+1))
+				neighborPos = Vector2(myLocation.x, myLocation.y+1);
 			break;
 		case NEIGHBOR_BACK_LEFT:
-			neighborPos = NEIGHBOR_BACK_LEFT_POS;
+			if(PositionValid(myLocation.x-1, myLocation.y-1))
+				neighborPos = Vector2(myLocation.x-1, myLocation.y-1);
 			break;
 		case NEIGHBOR_BACK_RIGHT:
-			neighborPos = NEIGHBOR_BACK_RIGHT_POS;
+			if(PositionValid(myLocation.x-1, myLocation.y+1))
+				neighborPos = Vector2(myLocation.x-1, myLocation.y+1);
 			break;
 	}
 	
 	return neighborPos;
 }
 
-function SetNeighbors()
-{	
-	var invalidPos = Vector2(-1,-1);
-	
-	/* Ahead */
-	NEIGHBOR_AHEAD_POS = PositionValid(myLocation.x+1, myLocation.y) ? invalidPos : Vector2(myLocation.x+1, myLocation.y);
-	/* Behind */
-	NEIGHBOR_BEHIND_POS = PositionValid(myLocation.x-1, myLocation.y) ? invalidPos : Vector2(myLocation.x-1, myLocation.y);
-	/* Left */
-	NEIGHBOR_LEFT_POS = PositionValid(myLocation.x, myLocation.y-1) ? invalidPos : Vector2(myLocation.x, myLocation.y-1);
-	/* Right */
-	NEIGHBOR_RIGHT_POS = PositionValid(myLocation.x, myLocation.y+1) ? invalidPos : Vector2(myLocation.x, myLocation.y+1);
-	/* Back-Left */
-	NEIGHBOR_BACK_LEFT_POS = PositionValid(myLocation.x-1, myLocation.y-1) ? invalidPos : Vector2(myLocation.x-1, myLocation.y-1);
-	/* Back-Right */
-	NEIGHBOR_BACK_RIGHT_POS = PositionValid(myLocation.x-1, myLocation.y+1) ? invalidPos : Vector2(myLocation.x-1, myLocation.y+1);
-}
 
-function GetInhabitant(slot : String)
+function GetInhabitant(/*slot : String*/) : Transform
 {
 	var piece : Transform;
-	if(SlotInhabitated(slot))
+	
+	/*
+	if(SlotInhabited(slot))
 	{
 		if("inhabitant" == slot)
-		{
+		{*/
 			piece = inhabitant;
+		/*
 		}
 		else if("drop_a" == slot)
 		{
@@ -334,18 +391,21 @@ function GetInhabitant(slot : String)
 		}
 		else if("bush" == slot)
 		{
-			piece = branch_bush;
+			piece = bush;
 		}
-	}
+	}*/
 	
-	return null;
+	return piece;
 }
 
-function SlotInhabitated(slot : String)
+function SlotInhabited(/*slot : String*/) : boolean
 {
+	/*
 	if("inhabitant" == slot)
 	{
+	*/
 		return inhabitant_occupied;
+	/*
 	}
 	else if("drop_a" == slot)
 	{
@@ -357,19 +417,23 @@ function SlotInhabitated(slot : String)
 	}
 	else if("bush" == slot)
 	{
-		return branch_bush_occupied;
+		return bush_occupied;
 	}
+	
 
 	return true;
+	*/
 }
 
-function SlotPos(slot : String)
+function SlotPos(/*slot : String*/) : Vector2
 {	
 	var slotPosition : Vector2 = new Vector2(-1,-1);
 	
+	/*
 	if("inhabitant" == slot)
-	{
+	{*/
 		slotPosition = inhabitant_pos;
+		/*
 	}
 	else if("drop_a" == slot)
 	{
@@ -381,89 +445,211 @@ function SlotPos(slot : String)
 	}
 	else if("bush" == slot)
 	{
-		slotPosition = branch_bush_pos;
-	}
+		slotPosition = bush_pos;
+	}*/
 
 	return slotPosition;
 }
 
 // I broke this out because its reused a few times.
-function PositionInhabitant(slot : String, new_inhabitant : Transform)
+function PositionInhabitant(/*slot : String, */new_inhabitant : Transform, z : float)
 {
-	var z = new_inhabitant.localPosition.z;
+	//var z = new_inhabitant.localPosition.z;
 	new_inhabitant.parent = gameObject.transform;
-	new_inhabitant.localPosition = new Vector3(SlotPos(slot)[0], SlotPos(slot)[1], z);
+	new_inhabitant.localPosition = Vector3(SlotPos(/*slot*/)[0], SlotPos(/*slot*/)[1], z);
 }
 
-function SetInhabitant(type : String, new_inhabitant : Transform)
-{	
-	var result = true;
-	
-	switch(type)
+function ClearInhabitant(/*slot : String*/)
+{
+/*
+	if("inhabitant" == slot)
+	{*/
+		inhabitant_occupied = false;
+		inhabitant = null;
+	/*
+	}
+	else if("drop_a" == slot)
 	{
-		case "unit":
-			if(false == SlotInhabitated("inhabitant"))
-			{
-				PositionInhabitant("inhabitant", new_inhabitant);
-			}
-			else
-			{
-				// Toggle some UI to depict a failed attempt to position here
-			}
-			break;
-			
-		case "pickup":
-			if(false == SlotInhabitated("drop_a"))
-			{
-				PositionInhabitant("drop_a", new_inhabitant);
-			}
-			else if(false == SlotInhabitated("drop_b"))
-			{
-				PositionInhabitant("drop_b", new_inhabitant);
-			}
-			else
-			{
-				// Toggle some UI to depict a failed attempt to position here
-			}
-			break;
+		item_drop_a_occupied = false;
+	}
+	else if("drop_b" == slot)
+	{
+		item_drop_b_occupied = false;
+	}
+	else if("bush" == slot)
+	{
+		bush_occupied = false;
+	}*/
+}
 
-		case "bush":
-			if(false == SlotInhabitated("bush"))
+
+function SetInhabitant(/*type : String, */new_inhabitant : Transform) : boolean
+{	
+	var result : boolean = true;
+	var position : Vector2;
+	
+	if( !SlotInhabited(/*"inhabitant"*/) )
+	{
+		if(new_inhabitant.name.Contains("forker") || new_inhabitant.name.Contains("brancher"))
+		{
+			position = new_inhabitant.GetComponent(UnitScript).GetPosition();
+		
+			if(PositionValid(position.x, position.y))
 			{
-				PositionInhabitant("bush", new_inhabitant);
+				// MoveFrom previous position
+				GameObject.Find(String.Format("/HexPlain/_{0}_{1}_", position.x, position.y)).GetComponent(CellScript).MoveFrom(new_inhabitant);
 			}
-			else
+	
+			// MoveTo this position
+			PositionInhabitant(/*"inhabitant", */new_inhabitant, 3.0);
+			
+			new_inhabitant.GetComponent(UnitScript).SetPosition(myLocation.x, myLocation.y);
+		}
+		else if(new_inhabitant.name.Contains("base"))
+		{			
+			position = new_inhabitant.GetComponent(BaseScript).GetPosition();
+		
+			if(PositionValid(position.x, position.y))
 			{
-				// Toggle some UI to depict a failed attempt to position here
+				// MoveFrom previous position
+				GameObject.Find(String.Format("/HexPlain/_{0}_{1}_", position.x, position.y)).GetComponent(CellScript).MoveFrom(new_inhabitant);
 			}
-			break;
-		default:
-			result = false;
+			
+			// MoveTo this position
+			PositionInhabitant(/*"inhabitant", */new_inhabitant, 3.0);
+			
+			new_inhabitant.GetComponent(BaseScript).SetPosition(myLocation.x, myLocation.y);
+		}
+		else if(new_inhabitant.name.Contains("bush"))
+		{
+			position = new_inhabitant.GetComponent(BushScript).GetPosition();
+		
+			if(PositionValid(position.x, position.y))
+			{
+				// MoveFrom previous position
+				GameObject.Find(String.Format("/HexPlain/_{0}_{1}_", position.x, position.y)).GetComponent(CellScript).MoveFrom(new_inhabitant);
+			}
+			
+			// MoveTo this position
+			PositionInhabitant(/*"inhabitant", */new_inhabitant, 3.0);
+			
+			new_inhabitant.GetComponent(BushScript).SetPosition(myLocation.x, myLocation.y);
+		}
+		else if(new_inhabitant.name.Contains("branch") || new_inhabitant.name.Contains("fork") || new_inhabitant.name.Contains("fortification"))
+		{
+			position = new_inhabitant.GetComponent(PickupScript).GetPosition();
+		
+			if(PositionValid(position.x, position.y))
+			{
+				// MoveFrom previous position
+				GameObject.Find(String.Format("/HexPlain/_{0}_{1}_", position.x, position.y)).GetComponent(CellScript).MoveFrom(new_inhabitant);
+			}
+			
+			// MoveTo this position
+			PositionInhabitant(/*"inhabitant", */new_inhabitant, 3.0);
+			
+			new_inhabitant.GetComponent(PickupScript).SetPosition(myLocation.x, myLocation.y);
+		}
+		else
+		{
+			return false;
+		}
+	}
+	else
+	{
+		// Toggle some UI to depict a failed attempt to position here
 	}
 	
 	return result;
 }
 
-
-function MoveTo(piece : Transform)
+function MoveTo(piece : Transform) : boolean
 {
 	var result : boolean = true;
 	
+	/* Name must be set before this point */
+	Debug.Log(String.Format("MoveTo {0}", myLocation));
+	
+	SetInhabitant(piece);
+	
+	return result;
+}
+
+function MoveFrom(piece : Transform) : boolean
+{
+	var result : boolean = true;
+	
+	Debug.Log(String.Format("MoveFrom {0}",myLocation));
+	
+	/*
 	if(piece.name.Contains("forker") || piece.name.Contains("brancher"))
 	{
-		SetInhabitant("unit", piece);
-	}
-	else if(piece.name.Contains("branch") || piece.name.Contains("fork") || piece.name.Contains("fortification"))
+	*/
+	
+	if(SlotInhabited(/*"inhabitant"*/) && GetInhabitant(/*"inhabitant"*/).name.Equals(piece.name))
 	{
-		SetInhabitant("pickup", piece);
-	}
-	else if(piece.name.Contains("branchbush"))
-	{
-		SetInhabitant("bush", piece);
+		ClearInhabitant(/*"inhabitant"*/);
 	}
 	else
 	{
 		result = false;
+	}
+	
+	/*
+	}
+	else if(piece.name.Contains("branch") || piece.name.Contains("fork") || piece.name.Contains("fortification"))
+	{
+		if(SlotInhabited("drop_a") && GetInhabitant("drop_a").name.Equals(piece.name))
+		{
+			ClearInhabitant("drop_a");
+		}
+		else if(SlotInhabited("drop_b") && GetInhabitant("drop_b").name.Equals(piece.name))
+		{
+			ClearInhabitant("drop_b");
+		}
+	}
+	else if(piece.name.Contains("branchbush"))
+	{
+		ClearInhabitant("bush");
+	}
+	else if(piece.name.Contains("base"))
+	{
+		ClearInhabitant("base");
+	}*/
+	
+	return result;
+}
+
+function CreateBush(id : int) : boolean
+{
+	var result : boolean = false;
+	
+	var bushClone : Transform = Instantiate(branch_bush);
+	bushClone.name = String.Format("bush_{0}", id);
+
+	result = MoveTo(bushClone);
+	if(result)
+	{
+		bushClone.GetComponent(BushScript).SetPosition(myLocation.x, myLocation.y);
+	}
+	
+	return result;
+}
+
+function CreateBase(name : String, player : boolean, baseType : String) : boolean
+{
+	var result : boolean = false;
+		
+	var baseClone : Transform = Instantiate(base);
+	baseClone.name = name;
+
+	result = MoveTo(baseClone);
+	if(result)
+	{
+		var baseScript : BaseScript = baseClone.GetComponent(BaseScript);
+		baseScript.SetBaseType(baseType);
+		baseScript.SetPlayerType(player);
+		baseScript.SetPosition(myLocation.x, myLocation.y);
 	}
 	
 	return result;

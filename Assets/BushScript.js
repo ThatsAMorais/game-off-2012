@@ -3,7 +3,7 @@
 var branch : Transform;
 
 private var branchCount : int = 4;
-private var world_position : Vector2;
+private var world_position : Vector2 = Vector2(-1,-1);
 
 function Start ()
 {
@@ -11,6 +11,15 @@ function Start ()
 
 function Update ()
 {
+	if(0 >= branchCount)
+	{
+		Destroy(gameObject);
+	}
+}
+
+function Selected(selected : boolean) : boolean
+{
+	return false;
 }
 
 function SetPosition(x : int, y : int)
@@ -18,20 +27,23 @@ function SetPosition(x : int, y : int)
 	world_position = new Vector2(x,y);
 }
 
-function CreateBranch(x : int, y : int)
+function GetPosition() : Vector2
 {
-	var name : String = String.Format("branch_{0}", branchCount);
-	var branchClone : Transform = Instantiate(branch);
-	
-	GameObject.Find("HexPlain").GetComponent(HexBoardScript).SetupPiece(branchClone, x, y, 2, name);
-	
-	GameObject.Find(name).GetComponent(PickupScript).SetPosition(x,y);
-	branchCount++;
+	return world_position;
 }
 
-function TakeBranch()
+function GetBranch(x : int, y : int) : Transform
 {
-	branchCount--;
+	var branch : Transform = null;
+	
+	if(0 < branchCount)
+	{
+		var name : String = String.Format("branch_{0}", branchCount);
+		branchCount--;
+		branch = Instantiate(branch);
+	}
+	
+	return branch;
 }
 
 function GetBranchCount()
@@ -39,17 +51,16 @@ function GetBranchCount()
 	return branchCount;
 }
 
-function GetCellScript()
+function GetCellScript() : CellScript
 {
 	return GameObject.Find(String.Format("HexPlain/_{0}_{1}_", world_position.x, world_position.y)).GetComponent(CellScript);
 }
 
+function Targeted(selection : Transform)
+{
+}
 
-function Target()
+function DoSelectedGUI(rect : Rect)
 {
-	GetCellScript().Targeted(true);
 }
-function UnTarget()
-{
-	GetCellScript().Targeted(false);
-}
+
