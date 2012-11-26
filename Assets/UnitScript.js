@@ -47,7 +47,7 @@ function Start ()
 	gameObject.transform.Rotate(gameObject.name.Contains("forker") ? 0 : 90, 0, 0);
 	
 	// Disabling this for now.
-	//newly_created = false;
+	newly_created = false;
 	
 }
 

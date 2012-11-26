@@ -40,12 +40,11 @@ function Update ()
 	gameObject.Find("Main Camera").transform.position = camPos;
 }
 
-function SetPosition(position : Vector3)
+function SetPosition(position : Vector2)
 {
 	var y : float = camPos.y;
-	camPos = position;
-	camPos.y = y;
-	gameObject.transform.localPosition = camPos;
+	camPos = Vector3(position.x, camPos.y, position.y);
+	gameObject.transform.position = camPos;
 }
 
 function GetSelectedGUIRect() : Rect

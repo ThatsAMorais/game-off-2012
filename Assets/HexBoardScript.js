@@ -70,7 +70,7 @@ function OnGUI()
 
 function GetCamControl()
 {
-	return Camera.mainCamera.GetComponent(CamControl);
+	return GameObject.Find("Main Camera").GetComponent(CamControl);
 }
 
 function ToggleCamControl(val : boolean)
