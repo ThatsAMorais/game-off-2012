@@ -3,14 +3,15 @@
 
 
 // Public
-var fork : Transform;
-var fortification : Transform;
+var fork : GameObject;
+var fortification : GameObject;
 var item_placement = 0;
 var team_player : boolean = false;
-var home_base : Transform = null;
+var home_base : GameObject = null;
 var unitType : String;
 var ACTION_POINTS_PER_TURN : int = 3;
 var dead : boolean = false;
+var MAX_UNIT_HEALTH = 64;
 
 private var HEADING_STRAIGHT = 0;
 private var HEADING_LEFT = 60;
@@ -22,6 +23,7 @@ private var HEADING_BACK = 180;
 var heading : int = HEADING_STRAIGHT;
 
 // Stats
+private var health : int = MAX_UNIT_HEALTH;
 private var forkCount : int = 0;
 private var fortificationCount : int = 0;
 
@@ -29,7 +31,7 @@ private var fortificationCount : int = 0;
 private var newly_created : boolean = true;
 private var branches_held : int = 0;
 private var world_position : Vector2 = Vector2(-1,-1);
-private var in_hand : Transform = null;
+private var in_hand : GameObject = null;
 
 private var selected : boolean = false;
 private var action_points = ACTION_POINTS_PER_TURN;
@@ -42,6 +44,11 @@ function Start ()
 {
 	// Determine the unit-type
 	unitType = gameObject.name.Contains("forker") ? "forker" : "brancher";
+	gameObject.transform.Rotate(gameObject.name.Contains("forker") ? 0 : 90, 0, 0);
+	
+	// Disabling this for now.
+	//newly_created = false;
+	
 }
 
 function Update ()
@@ -84,6 +91,10 @@ function GetUnitType() : String
 	return unitType;
 }
 
+function GetHealth() : int
+{
+	return health;
+}
 
 function DoNewUnitAnimation()
 {
@@ -104,23 +115,16 @@ function DoNewUnitAnimation()
 	}
 }
 
-/*
-function SetupPiece(piece : Transform, x : int, y : int, z : float, name : String)
+function CreateFork() : GameObject
 {
-	GameObject.Find("HexPlain").GetComponent(HexBoardScript).SetupPiece(piece, x, y, z, name);
-}
-*/
-
-function CreateFork() : Transform
-{
-	var forkClone : Transform = Instantiate(fork);
+	var forkClone : GameObject = Instantiate(fork);
 	forkCount++;
 	return forkClone;
 }
 
-function CreateFortification() : Transform
+function CreateFortification() : GameObject
 {
-	var fortificationClone : Transform = Instantiate(fortification);
+	var fortificationClone : GameObject = Instantiate(fortification);
 	fortificationCount++;
 	return fortificationClone;
 }
@@ -153,7 +157,7 @@ function GetCellScript(x : int, y : int) : CellScript
 {
 	var pos : Vector2 = new Vector2((x == -1) ? world_position.x : x, (y == -1) ? world_position.y : y);
 	
-	return GameObject.Find(String.Format("HexPlain/_{0}_{1}_", pos.x, pos.y)).GetComponent(CellScript);
+	return GameObject.Find(String.Format("HexPlain/cell_{0}_{1}_", pos.x, pos.y)).GetComponent(CellScript);
 }
 
 function GetNeighbor(direction : int) : Vector2
@@ -181,7 +185,7 @@ function PositionValid(position : Vector2) : boolean
 	return true;
 }
 
-function TossItem(item : Transform) : boolean
+function TossItem(item : GameObject) : boolean
 {
 	/*SetupPiece(item, neighboringPos.x, neighboringPos.y, item_placement, item.name);*/
 	
@@ -208,25 +212,25 @@ function TossItem(item : Transform) : boolean
 	return result;
 }
 
-function GraspItem(item : Transform)
+function GraspItem(item : GameObject)
 {
 	if(null != in_hand)
 	{
 		TossItem(in_hand);
 	}
 	
-	item.parent = gameObject.transform;
+	item.transform.parent = gameObject.transform;
 	if(item.name.Contains("fork"))
 	{
-		item.localPosition = Vector3(-1,1,0);
-		item.localRotation = Quaternion.identity;
-		item.Rotate(Vector3(0,180,90));
-		item.localScale = Vector3(0.2,0.2,0.2);
+		item.transform.localPosition = Vector3(-1,1,0);
+		item.transform.localRotation = Quaternion.identity;
+		item.transform.Rotate(Vector3(0,180,90));
+		item.transform.localScale = Vector3(0.2,0.2,0.2);
 	}
 	else if(item.name.Contains("fortification"))
 	{
-		item.localPosition = Vector3(-1,1,0);
-		item.localScale = Vector3(0.2,0.2,0.2);
+		item.transform.localPosition = Vector3(-1,1,0);
+		item.transform.localScale = Vector3(0.3,0.3,0.2);
 	}
 	
 	item.GetComponent(PickupScript).SetPosition(GetPosition().x, GetPosition().y);
@@ -235,7 +239,7 @@ function GraspItem(item : Transform)
 function CreateItem()
 {
 	var name : String = FormatUnitName(unitType == "forker" ? "fork" : "fortification");
-	var item : Transform;
+	var item : GameObject;
 	switch(unitType)
 	{
 		case "forker":
@@ -251,7 +255,7 @@ function CreateItem()
 	GraspItem(item);
 }
 
-function SetHomeBase(homeBase : Transform)
+function SetHomeBase(homeBase : GameObject)
 {
 	home_base = homeBase;
 }
@@ -261,27 +265,41 @@ function SetTeam(teamPlayer : boolean)
 	team_player = teamPlayer;
 }
 
+function IsPlayer() : boolean
+{
+	return team_player;
+}
+
+
 function GetForkCount() : int
 {
 	return forkCount;
 }
-
-function Kill()
-{
-	dead = true;
-	home_base.GetComponent(BaseScript).UnitDeath(unitType);
-	Destroy(gameObject);
-}
-
 
 function GetFortificationCount() : int
 {
 	return fortificationCount;
 }
 
-function DoSelectedGUI(rect : Rect)
+function Kill()
+{
+	if(GetCellScript(world_position.x, world_position.y).GetComponent(CellScript).DestroyInhabitant())
+	{
+		dead = true;
+		home_base.GetComponent(BaseScript).UnitDeath(unitType);
+	}
+}
+
+function DoSelectedGUI(rect : Rect, guiBG : Texture)
 {
 	GUILayout.BeginArea(rect);
+	GUILayout.Box(guiBG);
+	GUILayout.EndArea();
+
+	GUILayout.BeginArea(rect);
+	GUILayout.BeginVertical();
+
+	DoStatsGUI();
 	
 	if(GUILayout.Button(String.Format("Create {0}", GetUnitType() == "forker" ? "Fork" : "Fortification")))
 	{
@@ -295,7 +313,34 @@ function DoSelectedGUI(rect : Rect)
 		Kill();
 	}
 
+	GUILayout.EndVertical();
 	GUILayout.EndArea();
+}
+
+function DoMouseoverGUI(rect : Rect, guiBG : Texture)
+{
+	GUILayout.BeginArea(rect);
+	GUILayout.Box(guiBG);
+	GUILayout.EndArea();
+
+	GUILayout.BeginArea(rect);
+	GUILayout.BeginVertical();
+
+	DoStatsGUI();
+
+	GUILayout.EndVertical();
+	GUILayout.EndArea();
+}
+
+function DoStatsGUI()
+{
+	var isPlayer : boolean = IsPlayer();
+	
+	GUILayout.TextField(String.Format("Unit : {0} ({1})", GetUnitType(), isPlayer ? "Ally" : "Enemy"));
+	GUILayout.TextField(String.Format("Health: {0}", (GetHealth()/MAX_UNIT_HEALTH)*100));
+	GUILayout.TextField(String.Format("Number of {0}s made : {1}",
+									 GetUnitType() == "forker" ? "fork" : "fortification",
+									 GetUnitType() == "forker" ? GetForkCount() : GetFortificationCount()));
 }
 
 function Selected(selected : boolean) : boolean

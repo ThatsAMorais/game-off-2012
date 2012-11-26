@@ -258,7 +258,7 @@ function PositionValid(position : Vector2)
 
 function GetCellScript(x,y)
 {
-	return GameObject.Find(String.Format("HexPlain/_{0}_{1}_", x, y)).GetComponent(CellScript);
+	return GameObject.Find(String.Format("HexPlain/cell_{0}_{1}_", x, y)).GetComponent(CellScript);
 }
 
 function CreateBush(x : int, y : int)
@@ -289,26 +289,9 @@ function CreateBase(x : int, y : int, name : String, player : boolean, baseType 
 	return result;
 }
 
-/*
-function SetupPiece(piece : Transform, x : int, y : int, z : float, name : String)
+function MoveTo(piece : GameObject, x : int, y : int)
 {
-	if(0 > x || 0 > y)
-	{
-		Debug.Log(String.Format("Bad Position: ({0},{1})", x, y));
-	}
-	else
-	{
-		piece.name = name;
-		var columnTrans = gameObject.Find(String.Format("HexPlain/_{0}_{1}_", x, y));
-		piece.parent = gameObject.Find(String.Format("HexPlain/_{0}_{1}_", x, y)).transform;
-		piece.transform.localPosition = new Vector3(0,0, piece.transform.localPosition.z);
-	}
-}
-*/
-
-function MoveTo(piece : Transform, x : int, y : int)
-{
-	GameObject.Find(String.Format("HexPlain/_{0}_{1}_", x, y)).GetComponent(CellScript).MoveTo(piece);
+	GameObject.Find(String.Format("HexPlain/cell_{0}_{1}_", x, y)).GetComponent(CellScript).MoveTo(piece);
 }
 
 function CreateGameboard()
@@ -331,7 +314,7 @@ function CreateGameboard()
 			}
 			
 			// Set the texture
-			gameObject.Find(String.Format("/HexPlain/_{0}_{1}_", x, y)).renderer.material.mainTexture = tex;
+			gameObject.Find(String.Format("/HexPlain/cell_{0}_{1}_", x, y)).renderer.material.mainTexture = tex;
 			
 			// Place bushes
 			if((bushesPlaced < init_number_of_bushes) && (2 == Random.Range(1,20)))

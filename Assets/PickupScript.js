@@ -1,10 +1,23 @@
 #pragma strict
 
-private var condition : int = 100;
+var MAX_PICKUP_CONDITION = 100;
+private var condition : int = MAX_PICKUP_CONDITION;
 private var world_position : Vector2 = Vector2(-1,-1);
+private var itemType : String;
 
 function Start () {
-
+	if(gameObject.name.Contains("fork"))
+	{
+		itemType = "fork";
+	}
+	else if(gameObject.name.Contains("fortification"))
+	{
+		itemType = "fortification";
+	}
+	else if(gameObject.name.Contains("branch"))
+	{
+		itemType = "branch";
+	}
 }
 
 function Update () {
@@ -26,12 +39,17 @@ function GetCondition() : int
 	return condition;
 }
 
+function GetItemType() : String
+{
+	return itemType;
+}
+
 function Damage(dmg : int)
 {
 	condition -= dmg;
 }
 
-function Targeted(selection : Transform)
+function Targeted(selection : GameObject)
 {
 }
 
@@ -41,6 +59,36 @@ function Selected(selected : boolean) : boolean
 	return false;
 }
 
-function DoSelectedGUI(rect : Rect)
+function DoSelectedGUI(rect : Rect, guiBG : Texture)
 {
+	GUILayout.BeginArea(rect);
+	GUILayout.BeginVertical();
+	
+	GUILayout.Box(guiBG);
+
+
+
+	GUILayout.EndVertical();
+	GUILayout.EndArea();
+}
+
+function DoMouseoverGUI(rect : Rect, guiBG : Texture)
+{
+	
+	GUILayout.BeginArea(rect);
+	GUILayout.BeginVertical();
+
+	GUILayout.Box(guiBG);
+	
+	DoStatsGUI();
+	
+	GUILayout.EndVertical();
+	GUILayout.EndArea();
+
+}
+
+function DoStatsGUI()
+{
+	GUILayout.TextField(String.Format("Pickup : {0}", GetItemType()));
+	GUILayout.TextField(String.Format("Condition: {0}", (GetCondition()/MAX_PICKUP_CONDITION)*100));
 }

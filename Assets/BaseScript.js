@@ -1,9 +1,15 @@
 #pragma strict
 
+var MAX_UNITS_PER_BASE = 15;
+var CONSTRUCTION_TIME : float = 2;
+var UNIT_DROP_X : float = 0;
+var UNIT_DROP_Y : float = 0;
+var MAX_BASE_HEALTH = 1024;
+
 var baseType : String;
 var player : boolean = false;
-var forker : Transform;
-var brancher : Transform;
+var forker : GameObject;
+var brancher : GameObject;
 var z_placement : float;
 var forkerCount : int;
 var brancherCount : int;
@@ -11,15 +17,11 @@ var number_of_forkers_alive = 0;
 var number_of_branchers_alive = 0;
 var unit_creation_waypoint : Vector2;
 
+private var health : int = MAX_BASE_HEALTH;
 private var current_construction : String;
 private var construction_in_progress : boolean = false;
 private var construction_progress : float = 0;
 private var world_position : Vector2 = Vector2(-1,-1);
-
-var MAX_UNITS_PER_BASE = 15;
-var CONSTRUCTION_TIME : float = 2;
-var UNIT_DROP_X : float = 0;
-var UNIT_DROP_Y : float = 0;
 
 var target_position : Vector2;
 
@@ -134,10 +136,16 @@ function GetBrancherCount() : int
 	return brancherCount;
 }
 
+function GetHealth() : int
+{
+	return health;
+}
+
 function SetPlayerType(isPlayer : boolean)
 {
 	player = isPlayer;
 }
+
 function IsPlayer() : boolean
 {
 	return player;
@@ -160,16 +168,18 @@ function FormatUnitName(unit : String) : String
 function CreateUnit(unit : String)
 {
 	var name : String = FormatUnitName(unit);
-	var modifier : int = 1;
-	var newUnit : Transform;
+	var modifier_x : int = 0;
+	var modifier_y : int = 1;
+	var newUnit : GameObject;
 	
-	if(15 > world_position.y)
+	if(15 < world_position.x)
 	{
-		modifier *= -1;
+		modifier_x = -1;
+		modifier_y = 0;
 	}
-	
-	UNIT_DROP_X  = world_position.x + modifier;
-	UNIT_DROP_Y  = world_position.y - modifier;
+		
+	UNIT_DROP_X  = world_position.x + modifier_x;
+	UNIT_DROP_Y  = world_position.y + modifier_y;
 
 	switch(unit)
 	{
@@ -183,24 +193,18 @@ function CreateUnit(unit : String)
 	
 	var unitScript : UnitScript = newUnit.GetComponent(UnitScript);
 	unitScript.SetTeam(player);
-	unitScript.SetHomeBase(gameObject.transform);
+	unitScript.SetHomeBase(gameObject);
 }
 
-/*
-function SetupPiece(piece : Transform, x : int, y : int, z : float, name : String)
-{
-	GameObject.Find("HexPlain").GetComponent(HexBoardScript).SetupPiece(piece, x, y, z, name);
-}
-*/
 
-function MoveTo(piece : Transform, x : int, y : int)
+function MoveTo(piece : GameObject, x : int, y : int)
 {
-	GameObject.Find(String.Format("HexPlain/_{0}_{1}_", x, y)).GetComponent(CellScript).MoveTo(piece);
+	GameObject.Find(String.Format("HexPlain/cell_{0}_{1}_", x, y)).GetComponent(CellScript).MoveTo(piece);
 }
 
-function CreateForker(x : int, y : int, name : String) : Transform
+function CreateForker(x : int, y : int, name : String) : GameObject
 {
-	var forkerClone : Transform = Instantiate(forker);
+	var forkerClone : GameObject = Instantiate(forker).gameObject;
 	forkerClone.name = name;
 	
 	/*SetupPiece(forkerClone, x, y, z_placement, name);*/
@@ -212,9 +216,9 @@ function CreateForker(x : int, y : int, name : String) : Transform
 	return forkerClone;
 }
 
-function CreateBrancher(x : int, y : int, name : String) : Transform
+function CreateBrancher(x : int, y : int, name : String) : GameObject
 {
-	var brancherClone : Transform = Instantiate(brancher);
+	var brancherClone : GameObject = Instantiate(brancher).gameObject;
 	brancherClone.name = name;
 	
 	/*SetupPiece(brancherClone, x, y, z_placement, name);*/
@@ -269,28 +273,34 @@ function StepConstruction(deltaTime : float)
 	}
 }
 
-// Just an opaque wrapper
-function DoSelectedGUI(rect : Rect)
+function DoMouseoverGUI(rect : Rect, guiBG : Texture)
 {
+	GUILayout.BeginArea(rect);
+	GUILayout.Box(guiBG);
+	GUILayout.EndArea();
+
+	GUILayout.BeginArea(rect);
+	GUILayout.BeginVertical();
+
+	DoStatsGUI();
+
+	GUILayout.EndVertical();
+	GUILayout.EndArea();
+}
+
+
+// Just an opaque wrapper
+function DoSelectedGUI(rect : Rect, guiBG : Texture)
+{
+	GUILayout.BeginArea(rect);
+	GUILayout.Box(guiBG);
+	GUILayout.EndArea();
+
 	GUILayout.BeginArea(rect);
 	
 	DoBaseGUIPanel();
 	
 	GUILayout.EndArea();
-}
-
-function DoStatsGUI()
-{
-	var bType = ("both" == GetBaseType() ? "forker" : GetBaseType());
-	for(var i = ("both" == GetBaseType() ? 2 : 1); i > 0; i--)
-	{
-		GUILayout.TextField(String.Format("Number of {0}s Alive: {1}/{2}",
-										  bType,
-										  bType == "forker" ? number_of_forkers_alive : number_of_branchers_alive,
-										  bType == "forker" ? GetForkerCount() : GetBrancherCount()));
-			
-		bType = ("forker" == bType ? "brancher" : "forker"); // Swap type for "both"-bases
-	}
 }
 
 function DoBaseGUIPanel()
@@ -323,6 +333,24 @@ function DoBaseGUIPanel()
 	
 	GUILayout.EndVertical();
 }
+
+function DoStatsGUI()
+{
+	var bType = ("both" == GetBaseType() ? "forker" : GetBaseType());
+	
+	GUILayout.TextField(String.Format("Health: {0}", (GetHealth()/MAX_BASE_HEALTH)*100));
+	
+	for(var i = ("both" == GetBaseType() ? 2 : 1); i > 0; i--)
+	{
+		GUILayout.TextField(String.Format("Number of {0}s Alive: {1}/{2}",
+										  bType,
+										  bType == "forker" ? number_of_forkers_alive : number_of_branchers_alive,
+										  bType == "forker" ? GetForkerCount() : GetBrancherCount()));
+			
+		bType = ("forker" == bType ? "brancher" : "forker"); // Swap type for "both"-bases
+	}
+}
+
 
 function DoPlayerGUI()
 {	

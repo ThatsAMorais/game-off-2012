@@ -1,23 +1,15 @@
 #pragma strict
 
-var base : Transform;
-var branch_bush : Transform;
+var base : GameObject;
+var branch_bush : GameObject;
+var guiBG_default : Texture;
+var guiBG_player : Texture;
+var guiBG_opponent : Texture;
 
-private var inhabitant : Transform;
+
+private var inhabitant : GameObject;
 private var inhabitant_occupied : boolean = false;
 var inhabitant_pos : Vector2 = new Vector2(0, 0);
-
-/*
-private var bush : Transform;
-private var bush_occupied : boolean = false;
-var bush_pos : Vector2 = new Vector2(.5, -.5);
-private var item_drop_a : Transform;
-private var item_drop_a_occupied : boolean = false;
-var item_drop_a_pos : Vector2 = new Vector2(-.5, .5);
-private var item_drop_b : Transform;
-private var item_drop_b_occupied : boolean = false;
-var item_drop_b_pos : Vector2 = new Vector2(-.5, -.5);
-*/
 
 // This table corresponds to the one in UnitScript.js regarding HEADING
 private var NUMBER_OF_NEIGHBORS : int = 6;
@@ -81,6 +73,7 @@ private var show_failed_target : boolean = false;
 
 private var selectable : boolean = false;
 
+private var owner : String = "open";
 
 function Start () {
 
@@ -88,21 +81,32 @@ function Start () {
 	var delimiter : String = "_";
 	var coordStrings = gameObject.name.Split(delimiter.ToCharArray());
 	myLocation = new Vector2(parseInt(coordStrings[1]), parseInt(coordStrings[2]));
-	Debug.Log(String.Format("Cell: {0}",myLocation));
+	
+	gameObject.name = String.Format("cell{0}", gameObject.name);
 
+	SetupParticleSystem();
 	// Particle system off initially	
 	ToggleParticleSystem(false);
 }
 
+function SetupParticleSystem()
+{
+	var particleSystem : ParticleSystem = GetParticleSystem();
+	particleSystem.startDelay = 0;
+	particleSystem.startLifetime = 2;
+	particleSystem.startSpeed = 0.75;
+	particleSystem.startSize = 0.25;	
+}
+
 function Update ()
 {
-	if(pathHighlightOn)
-	{
-		DoPathHighlight();
-	}
-	else if(mouseoverHighlightOn)
+	if(mouseoverHighlightOn)
 	{
 		DoMouseoverHighlight();
+	}
+	else if(pathHighlightOn)
+	{
+		DoPathHighlight();
 	}
 	else if(selectedHighlightOn)
 	{
@@ -112,6 +116,16 @@ function Update ()
 	{
 		DoTargetedHighlight();
 	}
+	else
+	{
+		ToggleParticleSystem(false);
+	}
+}
+
+function OnGUI()
+{
+	if(mouseoverHighlightOn)
+		DoMouseoverGUI();
 }
 
 function GetPosition() : Vector2
@@ -119,21 +133,29 @@ function GetPosition() : Vector2
 	return myLocation;
 }
 
-function MousedOver()
+function OnMouseEnter()
 {
-	mouseoverHighlightOn = true;
+	if(SlotInhabited())
+	{
+		// Enable pass-thru of Cell-GUI-area, where the inhabitant of a cell is described in general
+		// TODO
+		
+		
+		// DISABLED for now
+		mouseoverHighlightOn = true;
+	}
 }
 
-function MouseExited()
+function OnMouseExit()
 {
 	mouseoverHighlightOn = false;
 	mouseoverHighlightMod = 0.5;
-	ToggleParticleSystem(false);
 }
+
 
 function Target(x : int, y : int)
 {
-	var piece : Transform = GetInhabitant();
+	var piece : GameObject = GetInhabitant();
 	
 	if(selectable)
 	{
@@ -154,7 +176,6 @@ function Targeted(val : boolean)
 	{
 		targetedHighlightOn = false;
 		targetedHighlightMod = 0.5;
-		ToggleParticleSystem(false);
 	}
 	else
 	{
@@ -173,13 +194,12 @@ function Selected(val : boolean)
 	{
 		selectedHighlightOn = false;
 		selectedHighlightMod = 0.5;
-		ToggleParticleSystem(false);
 	}
 	else
 	{
 		if(SlotInhabited())
 		{
-			var piece : Transform = GetInhabitant();
+			var piece : GameObject = GetInhabitant();
 
 			// Determine if the object here can even be selected so as to ignore further stimulus
 			if(piece.name.Contains("forker") || piece.name.Contains("brancher"))
@@ -208,32 +228,96 @@ function Selected(val : boolean)
 	}
 }
 
-
 function DoSelectedGUI(rect : Rect)
 {
-	var piece : Transform = GetInhabitant();
+	var piece : GameObject = GetInhabitant();
+	var guiBG : Texture = guiBG_default;
 
 	if(selectable)
 	{
 		if(piece.name.Contains("forker") || piece.name.Contains("brancher"))
 		{
-			piece.GetComponent(UnitScript).DoSelectedGUI(rect);
+			if(piece.GetComponent(UnitScript).IsPlayer())
+			{
+				guiBG = guiBG_player;
+			}
+			else
+			{
+				guiBG = guiBG_opponent;
+			}
+
+			piece.GetComponent(UnitScript).DoSelectedGUI(rect, guiBG);
 		}
 		else if(piece.name.Contains("base"))
 		{
-			piece.GetComponent(BaseScript).DoSelectedGUI(rect);
+			if(piece.GetComponent(BaseScript).IsPlayer())
+			{
+				guiBG = guiBG_player;
+			}
+			else
+			{
+				guiBG = guiBG_opponent;
+			}
+
+			piece.GetComponent(BaseScript).DoSelectedGUI(rect, guiBG);
 		}
 		else if(piece.name.Contains("bush"))
 		{
-			piece.GetComponent(BushScript).DoSelectedGUI(rect);
+			piece.GetComponent(BushScript).DoSelectedGUI(rect, guiBG);
 		}
 		else if(piece.name.Contains("branch") || piece.name.Contains("fork") || piece.name.Contains("fortification"))
 		{
-			piece.GetComponent(PickupScript).DoSelectedGUI(rect);
+			piece.GetComponent(PickupScript).DoSelectedGUI(rect, guiBG);
 		}
 	}
 }
 
+function GetMouseoverGUIRect() : Rect
+{
+	return Rect(0, Screen.height*0.7, Screen.width*0.35, Screen.height*0.3);
+}
+
+function DoMouseoverGUI()
+{
+	var piece : GameObject = GetInhabitant();	
+	var rect : Rect = GetMouseoverGUIRect();
+	var guiBG : Texture = guiBG_default;
+	
+	if(piece.name.Contains("forker") || piece.name.Contains("brancher"))
+	{
+		if(piece.GetComponent(UnitScript).IsPlayer())
+		{
+			guiBG = guiBG_player;
+		}
+		else
+		{
+			guiBG = guiBG_opponent;
+		}
+
+		piece.GetComponent(UnitScript).DoMouseoverGUI(rect, guiBG);
+	}
+	else if(piece.name.Contains("base"))
+	{
+		if(piece.GetComponent(BaseScript).IsPlayer())
+		{
+			guiBG = guiBG_player;
+		}
+		else
+		{
+			guiBG = guiBG_opponent;
+		}
+
+		piece.GetComponent(BaseScript).DoMouseoverGUI(rect, guiBG);
+	}
+	else if(piece.name.Contains("bush"))
+	{
+		piece.GetComponent(BushScript).DoMouseoverGUI(rect, guiBG);
+	}
+	else if(piece.name.Contains("branch") || piece.name.Contains("fork") || piece.name.Contains("fortification"))
+	{
+		piece.GetComponent(PickupScript).DoMouseoverGUI(rect, guiBG);
+	}
+}
 
 
 function SetPathHighlight(val : boolean, type : String)
@@ -284,27 +368,29 @@ function ToggleParticleSystem(on : boolean)
 
 function FadeColor(color : Color, mod : float, speed : int) : float
 {
-	var direction : int = 100 > mod ? 1 : -1;
+	var direction : int = 500 > mod ? 1 : -1;
 	
-	mod += direction * speed * Time.deltaTime;
-	color.a += mod;
+	mod += direction * 10 * Time.deltaTime;
+	color.g += mod;
 	
 	//gameObject.renderer.material.color = color;
 	
-	GetParticleSystem().renderer.material.color = color;
+	GetParticleSystem().startColor = color;
 	ToggleParticleSystem(true);
 	
-	return Time.deltaTime;
+	return mod;
 }
 
 function DoMouseoverHighlight()
 {
-	FadeColor(mouseoverHighlightColor, mouseoverHighlightMod, 5);
+	mouseoverHighlightMod = FadeColor(mouseoverHighlightColor, mouseoverHighlightMod, 5);
 }
 
 function DoTargetedHighlight()
 {
-	targetedHighlightTimediff += FadeColor(targetedHighlightColor, targetedHighlightMod, 10);
+	targetedHighlightTimediff += Time.deltaTime;
+
+	targetedHighlightMod = FadeColor(targetedHighlightColor, targetedHighlightMod, 10);
 	
 	if(targetedHighlightTimediff >= 2)
 	{
@@ -314,12 +400,12 @@ function DoTargetedHighlight()
 
 function DoSelectedHighlight()
 {
-	FadeColor(selectedHighlightColor, selectedHighlightMod, 2);
+	selectedHighlightMod = FadeColor(selectedHighlightColor, selectedHighlightMod, 2);
 }
 
 function DoPathHighlight()
 {
-	FadeColor(pathHighlightColor, pathHighlightMod, 3);
+	pathHighlightMod = FadeColor(pathHighlightColor, pathHighlightMod, 3);
 }
 
 function PositionValid(x : int, y : int) : boolean
@@ -369,126 +455,43 @@ function GetNeighbor(neighbor : int) : Vector2
 }
 
 
-function GetInhabitant(/*slot : String*/) : Transform
+function GetInhabitant() : GameObject
 {
-	var piece : Transform;
-	
-	/*
-	if(SlotInhabited(slot))
-	{
-		if("inhabitant" == slot)
-		{*/
-			piece = inhabitant;
-		/*
-		}
-		else if("drop_a" == slot)
-		{
-			piece = item_drop_b;
-		}
-		else if("drop_b" == slot)
-		{
-			piece = item_drop_b;
-		}
-		else if("bush" == slot)
-		{
-			piece = bush;
-		}
-	}*/
-	
-	return piece;
+	return inhabitant;
 }
 
-function SlotInhabited(/*slot : String*/) : boolean
+function SlotInhabited() : boolean
 {
-	/*
-	if("inhabitant" == slot)
-	{
-	*/
-		return inhabitant_occupied;
-	/*
-	}
-	else if("drop_a" == slot)
-	{
-		return item_drop_a_occupied;
-	}
-	else if("drop_b" == slot)
-	{
-		return item_drop_b_occupied;
-	}
-	else if("bush" == slot)
-	{
-		return bush_occupied;
-	}
-	
-
-	return true;
-	*/
+	return inhabitant_occupied;
 }
 
-function SlotPos(/*slot : String*/) : Vector2
-{	
-	var slotPosition : Vector2 = new Vector2(-1,-1);
-	
-	/*
-	if("inhabitant" == slot)
-	{*/
-		slotPosition = inhabitant_pos;
-		/*
-	}
-	else if("drop_a" == slot)
-	{
-		slotPosition = item_drop_a_pos;
-	}
-	else if("drop_b" == slot)
-	{
-		slotPosition = item_drop_b_pos;
-	}
-	else if("bush" == slot)
-	{
-		slotPosition = bush_pos;
-	}*/
-
-	return slotPosition;
+function SlotPos() : Vector2
+{
+	return inhabitant_pos;
 }
 
 // I broke this out because its reused a few times.
-function PositionInhabitant(/*slot : String, */new_inhabitant : Transform, z : float)
+function PositionInhabitant(new_inhabitant : GameObject, z : float)
 {
 	//var z = new_inhabitant.localPosition.z;
-	new_inhabitant.parent = gameObject.transform;
-	new_inhabitant.localPosition = Vector3(SlotPos(/*slot*/)[0], SlotPos(/*slot*/)[1], z);
+	new_inhabitant.transform.parent = gameObject.transform;
+	new_inhabitant.transform.localPosition = Vector3(SlotPos()[0], SlotPos()[1], z);
+	inhabitant = new_inhabitant;
+	inhabitant_occupied = true;
 }
 
-function ClearInhabitant(/*slot : String*/)
+function ClearInhabitant()
 {
-/*
-	if("inhabitant" == slot)
-	{*/
-		inhabitant_occupied = false;
-		inhabitant = null;
-	/*
-	}
-	else if("drop_a" == slot)
-	{
-		item_drop_a_occupied = false;
-	}
-	else if("drop_b" == slot)
-	{
-		item_drop_b_occupied = false;
-	}
-	else if("bush" == slot)
-	{
-		bush_occupied = false;
-	}*/
+	inhabitant_occupied = false;
+	inhabitant = null;
 }
 
-
-function SetInhabitant(/*type : String, */new_inhabitant : Transform) : boolean
+function SetInhabitant(new_inhabitant : GameObject) : boolean
 {	
 	var result : boolean = true;
 	var position : Vector2;
 	
-	if( !SlotInhabited(/*"inhabitant"*/) )
+	if( !SlotInhabited() )
 	{
 		if(new_inhabitant.name.Contains("forker") || new_inhabitant.name.Contains("brancher"))
 		{
@@ -497,11 +500,11 @@ function SetInhabitant(/*type : String, */new_inhabitant : Transform) : boolean
 			if(PositionValid(position.x, position.y))
 			{
 				// MoveFrom previous position
-				GameObject.Find(String.Format("/HexPlain/_{0}_{1}_", position.x, position.y)).GetComponent(CellScript).MoveFrom(new_inhabitant);
+				GameObject.Find(String.Format("/HexPlain/cell_{0}_{1}_", position.x, position.y)).GetComponent(CellScript).MoveFrom(new_inhabitant);
 			}
 	
 			// MoveTo this position
-			PositionInhabitant(/*"inhabitant", */new_inhabitant, 3.0);
+			PositionInhabitant(new_inhabitant, 3.0);
 			
 			new_inhabitant.GetComponent(UnitScript).SetPosition(myLocation.x, myLocation.y);
 		}
@@ -512,11 +515,11 @@ function SetInhabitant(/*type : String, */new_inhabitant : Transform) : boolean
 			if(PositionValid(position.x, position.y))
 			{
 				// MoveFrom previous position
-				GameObject.Find(String.Format("/HexPlain/_{0}_{1}_", position.x, position.y)).GetComponent(CellScript).MoveFrom(new_inhabitant);
+				GameObject.Find(String.Format("/HexPlain/cell_{0}_{1}_", position.x, position.y)).GetComponent(CellScript).MoveFrom(new_inhabitant);
 			}
 			
 			// MoveTo this position
-			PositionInhabitant(/*"inhabitant", */new_inhabitant, 3.0);
+			PositionInhabitant(new_inhabitant, 3.0);
 			
 			new_inhabitant.GetComponent(BaseScript).SetPosition(myLocation.x, myLocation.y);
 		}
@@ -527,11 +530,11 @@ function SetInhabitant(/*type : String, */new_inhabitant : Transform) : boolean
 			if(PositionValid(position.x, position.y))
 			{
 				// MoveFrom previous position
-				GameObject.Find(String.Format("/HexPlain/_{0}_{1}_", position.x, position.y)).GetComponent(CellScript).MoveFrom(new_inhabitant);
+				GameObject.Find(String.Format("/HexPlain/cell_{0}_{1}_", position.x, position.y)).GetComponent(CellScript).MoveFrom(new_inhabitant);
 			}
 			
 			// MoveTo this position
-			PositionInhabitant(/*"inhabitant", */new_inhabitant, 3.0);
+			PositionInhabitant(new_inhabitant, 3.0);
 			
 			new_inhabitant.GetComponent(BushScript).SetPosition(myLocation.x, myLocation.y);
 		}
@@ -542,11 +545,11 @@ function SetInhabitant(/*type : String, */new_inhabitant : Transform) : boolean
 			if(PositionValid(position.x, position.y))
 			{
 				// MoveFrom previous position
-				GameObject.Find(String.Format("/HexPlain/_{0}_{1}_", position.x, position.y)).GetComponent(CellScript).MoveFrom(new_inhabitant);
+				GameObject.Find(String.Format("/HexPlain/cell_{0}_{1}_", position.x, position.y)).GetComponent(CellScript).MoveFrom(new_inhabitant);
 			}
 			
 			// MoveTo this position
-			PositionInhabitant(/*"inhabitant", */new_inhabitant, 3.0);
+			PositionInhabitant(new_inhabitant, 3.0);
 			
 			new_inhabitant.GetComponent(PickupScript).SetPosition(myLocation.x, myLocation.y);
 		}
@@ -563,59 +566,29 @@ function SetInhabitant(/*type : String, */new_inhabitant : Transform) : boolean
 	return result;
 }
 
-function MoveTo(piece : Transform) : boolean
+function MoveTo(piece : GameObject) : boolean
 {
 	var result : boolean = true;
 	
 	/* Name must be set before this point */
-	Debug.Log(String.Format("MoveTo {0}", myLocation));
 	
 	SetInhabitant(piece);
 	
 	return result;
 }
 
-function MoveFrom(piece : Transform) : boolean
+function MoveFrom(piece : GameObject) : boolean
 {
 	var result : boolean = true;
 	
-	Debug.Log(String.Format("MoveFrom {0}",myLocation));
-	
-	/*
-	if(piece.name.Contains("forker") || piece.name.Contains("brancher"))
+	if(SlotInhabited() && GetInhabitant().name.Equals(piece.name))
 	{
-	*/
-	
-	if(SlotInhabited(/*"inhabitant"*/) && GetInhabitant(/*"inhabitant"*/).name.Equals(piece.name))
-	{
-		ClearInhabitant(/*"inhabitant"*/);
+		ClearInhabitant();
 	}
 	else
 	{
 		result = false;
 	}
-	
-	/*
-	}
-	else if(piece.name.Contains("branch") || piece.name.Contains("fork") || piece.name.Contains("fortification"))
-	{
-		if(SlotInhabited("drop_a") && GetInhabitant("drop_a").name.Equals(piece.name))
-		{
-			ClearInhabitant("drop_a");
-		}
-		else if(SlotInhabited("drop_b") && GetInhabitant("drop_b").name.Equals(piece.name))
-		{
-			ClearInhabitant("drop_b");
-		}
-	}
-	else if(piece.name.Contains("branchbush"))
-	{
-		ClearInhabitant("bush");
-	}
-	else if(piece.name.Contains("base"))
-	{
-		ClearInhabitant("base");
-	}*/
 	
 	return result;
 }
@@ -624,7 +597,7 @@ function CreateBush(id : int) : boolean
 {
 	var result : boolean = false;
 	
-	var bushClone : Transform = Instantiate(branch_bush);
+	var bushClone : GameObject = Instantiate(branch_bush);
 	bushClone.name = String.Format("bush_{0}", id);
 
 	result = MoveTo(bushClone);
@@ -640,7 +613,7 @@ function CreateBase(name : String, player : boolean, baseType : String) : boolea
 {
 	var result : boolean = false;
 		
-	var baseClone : Transform = Instantiate(base);
+	var baseClone : GameObject = Instantiate(base);
 	baseClone.name = name;
 
 	result = MoveTo(baseClone);
@@ -650,6 +623,22 @@ function CreateBase(name : String, player : boolean, baseType : String) : boolea
 		baseScript.SetBaseType(baseType);
 		baseScript.SetPlayerType(player);
 		baseScript.SetPosition(myLocation.x, myLocation.y);
+	}
+	
+	return result;
+}
+
+function DestroyInhabitant() : boolean
+{
+	var piece : GameObject = GetInhabitant();
+	var result : boolean = false;
+	result = MoveFrom(piece);
+	if(result)
+	{
+		Destroy(piece.gameObject);
+		Selected(false);
+		Targeted(false);
+		OnMouseExit();
 	}
 	
 	return result;
