@@ -23,7 +23,13 @@ private var construction_in_progress : boolean = false;
 private var construction_progress : float = 0;
 private var world_position : Vector2 = Vector2(-1,-1);
 
-var target_position : Vector2;
+private var target_position : Vector2;
+private var previousPathHighlight : Vector2;
+
+function OnDestroy()
+{
+	//TODO: Do a "killed" animation
+}
 
 function Start ()
 {
@@ -80,8 +86,18 @@ function InitializeBase()
 
 function SetPosition(x : int, y : int)
 {
-	world_position = new Vector2(x,y);
-	target_position = new Vector2(x,y);
+	var modifier_x : int = 0;
+	var modifier_y : int = 1;
+
+	world_position = Vector2(x,y);
+	
+	if(15 < world_position.x)
+	{
+		modifier_x = -1;
+		modifier_y = 0;
+	}
+
+	SetTarget(world_position.x + modifier_x, world_position.y + modifier_y);
 }
 
 function GetPosition() : Vector2
@@ -91,7 +107,13 @@ function GetPosition() : Vector2
 
 function SetTarget(x : int, y : int)
 {
-	target_position = new Vector2(x,y);
+	target_position = Vector2(x,y);
+	Debug.Log(String.Format("SetTarget {0}",target_position));
+}
+
+function GetTarget() : Vector2
+{
+	return target_position;
 }
 
 function Selected(selected : boolean) : boolean
@@ -168,26 +190,15 @@ function FormatUnitName(unit : String) : String
 function CreateUnit(unit : String)
 {
 	var name : String = FormatUnitName(unit);
-	var modifier_x : int = 0;
-	var modifier_y : int = 1;
 	var newUnit : GameObject;
 	
-	if(15 < world_position.x)
-	{
-		modifier_x = -1;
-		modifier_y = 0;
-	}
-		
-	UNIT_DROP_X  = world_position.x + modifier_x;
-	UNIT_DROP_Y  = world_position.y + modifier_y;
-
 	switch(unit)
 	{
 		case "forker":
-			newUnit = CreateForker(UNIT_DROP_X, UNIT_DROP_Y, name);
+			newUnit = CreateForker(GetTarget().x, GetTarget().y, name);
 			break;
 		case "brancher":
-			newUnit = CreateBrancher(UNIT_DROP_X, UNIT_DROP_Y, name);
+			newUnit = CreateBrancher(GetTarget().x, GetTarget().y, name);
 			break;
 	}
 	
@@ -207,7 +218,6 @@ function CreateForker(x : int, y : int, name : String) : GameObject
 	var forkerClone : GameObject = Instantiate(forker).gameObject;
 	forkerClone.name = name;
 	
-	/*SetupPiece(forkerClone, x, y, z_placement, name);*/
 	MoveTo(forkerClone, x, y);
 	
 	forkerCount++;
@@ -221,7 +231,6 @@ function CreateBrancher(x : int, y : int, name : String) : GameObject
 	var brancherClone : GameObject = Instantiate(brancher).gameObject;
 	brancherClone.name = name;
 	
-	/*SetupPiece(brancherClone, x, y, z_placement, name);*/
 	MoveTo(brancherClone, x, y);
 	
 	brancherCount++;
@@ -402,4 +411,15 @@ function DoPlayerGUI()
 function DoOpponentGUI()
 {
 	// Not sure what information to show about an opponent yet.
+}
+
+function MouseoverTarget(position : Vector2)
+{
+	GameObject.Find(String.Format("HexPlain/cell_{0}_{1}_",
+								  previousPathHighlight.x,
+								  previousPathHighlight.y)).GetComponent(CellScript).SetPathHighlight(false, "valid");
+	
+	GameObject.Find(String.Format("HexPlain/cell_{0}_{1}_", position.x, position.y)).GetComponent(CellScript).SetPathHighlight(true, "valid");
+	
+	previousPathHighlight = position;
 }

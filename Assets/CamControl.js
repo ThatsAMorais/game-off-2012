@@ -42,9 +42,7 @@ function Update ()
 
 function SetPosition(position : Vector2)
 {
-	var y : float = camPos.y;
-	camPos = Vector3(position.x, camPos.y, position.y);
-	gameObject.transform.position = camPos;
+	camPos = Vector3(position.x, gameObject.transform.position.y, position.y);;
 }
 
 function GetSelectedGUIRect() : Rect
@@ -92,12 +90,19 @@ function DoMousePicking()
 			TargetObject(hit.transform.gameObject);
 		}
 	}
+	else
+	{
+		if(Physics.Raycast(ray, hit, Mathf.Infinity, layerMask))
+		{
+			MouseoverObject(hit.transform.gameObject);
+		}
+	}
 
 }
 
 function ClearCurrentSelection()
 {
-	if(null != currentSelection)
+	if(currentSelection)
 	{
 		currentSelection.GetComponent(CellScript).Selected(false);
 		currentSelection = null;
@@ -106,7 +111,7 @@ function ClearCurrentSelection()
 
 function ClearCurrentTargeted()
 {
-	if(null != targetedSelection)
+	if(targetedSelection)
 	{
 		targetedSelection.GetComponent(CellScript).Targeted(true);
 		targetedSelection = null;
@@ -130,5 +135,18 @@ function TargetObject(targeted : GameObject)
 
 	var targetPos : Vector2 = targetedSelection.GetComponent(CellScript).GetPosition();
 	currentSelection.GetComponent(CellScript).Target(targetPos.x, targetPos.y);
+}
 
+function MouseoverObject(mouseover : GameObject)
+{
+	if(currentSelection)
+	{
+		if(mouseoverTarget != mouseover)
+		{
+			mouseoverTarget = mouseover;
+			
+			var mouseoverPos : Vector2 = mouseoverTarget.GetComponent(CellScript).GetPosition();
+			currentSelection.GetComponent(CellScript).MouseoverTarget(mouseoverPos);
+		}
+	}
 }

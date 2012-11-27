@@ -1,24 +1,25 @@
 #pragma strict
 
-// "constants"
-var lo_index : int = 0;
-var hi_index : int = 32;
-
-private var INIT_STATE = 0;
-private var SETUP_STATE = 1;
-private var GAME_STATE = 2;
-private var MENU_STATE = 3;
-private var CREDITS_STATE = 3;
-private var PLAYER_TYPE_FORKER = "forker";
-private var PLAYER_TYPE_BRANCHER = "brancher";
-private var PLAYER_TYPE_BOTH = "both";
-
 // public
 var init_number_of_bushes : int;
 var z_placement : float;
 var groundTexture1 : Texture2D;
 var groundTexture2 : Texture2D;
 var playerType = PLAYER_TYPE_BOTH;
+var guiBG_default : Texture;
+
+// "constants"
+private var lo_index : int = 0;
+private var hi_index : int = 32;
+private var INIT_STATE = 0;
+private var SETUP_STATE = 1;
+private var GAME_STATE = 2;
+private var MENU_STATE = 3;
+private var GAME_OVER_STATE = 4;
+private var CREDITS_STATE = 3;
+private var PLAYER_TYPE_FORKER = "forker";
+private var PLAYER_TYPE_BRANCHER = "brancher";
+private var PLAYER_TYPE_BOTH = "both";
 
 // private
 private var bushesPlaced : int;
@@ -26,13 +27,21 @@ private var gameState : int = INIT_STATE;
 private var escapeMenuOn = false;
 private var setupStep = 0;					// the curent step in the battle-setup process
 private var gameStarted : boolean = false;
+private var player_turn : boolean = true;
+
+private var AI_ACTION_DELAY : float = 3.0;
+private var NUMBER_OF_ACTION_POINTS : int = 3;
+private var MAX_ROUNDS : int = 4;
+private var current_round : int = MAX_ROUNDS;
+private var opponent_ai_action_delay : float = AI_ACTION_DELAY;
+private var opponent_action_points : int = NUMBER_OF_ACTION_POINTS;
+private var player_action_points : int = NUMBER_OF_ACTION_POINTS;
 
 var BUTTON_W = 300;
 var BUTTON_H = 200;
 var BUTTONS_PER_ROW : int = 1;
 
 
-/* Unity virtuals */
 function Start ()
 {
 	CreateInitScene();
@@ -44,6 +53,16 @@ function Update ()
 	if(Input.GetKeyDown(UnityEngine.KeyCode.Escape))
 	{
 		ToggleEscapeMenu();
+	}
+	
+	if(!player_turn)
+	{
+		DoOpponentTurn(Time.deltaTime);
+	}
+	
+	if(0 == current_round)
+	{
+		SetState(GAME_OVER_STATE);
 	}
 }
 
@@ -65,10 +84,58 @@ function OnGUI()
 	{
 		DoMenuGUI();
 	}
+	else if(gameState == GAME_OVER_STATE)
+	{
+		DoGameOverGUI();
+	}
 }
-/******************/
 
-function GetCamControl()
+function EndTurn()
+{	
+	// Toggle the turn
+	player_turn = (!player_turn);
+	
+	if(player_turn)
+	{
+		current_round--;
+		resetPlayerturn();
+	}
+	else
+	{
+		resetOpponentTurn();
+	}
+}
+
+function resetOpponentTurn()
+{
+	opponent_ai_action_delay = AI_ACTION_DELAY;
+	opponent_action_points = NUMBER_OF_ACTION_POINTS;
+}
+
+function resetPlayerturn()
+{
+	player_action_points = NUMBER_OF_ACTION_POINTS;
+}
+
+function DoOpponentTurn(deltaTime : float)
+{
+	// TODO:
+	// Opponent's agenda
+	//  - build up x number of units or f=x*0.5 and b=x*0.5 for forkers and branchers
+	// if(branchers)
+	//  - distribute the units defensively around the base radially outward
+	// if(forkers)
+	//  - travel diagonally to locate the player's base and fortifications
+	
+	// For now, just a short delay
+	opponent_ai_action_delay -= deltaTime;
+	if(0 >= opponent_ai_action_delay)
+	{
+		EndTurn();
+	}
+}
+
+function GetCamControl() : CamControl
 {
 	return GameObject.Find("Main Camera").GetComponent(CamControl);
 }
@@ -194,6 +261,40 @@ function DoSetupGUI()
 
 function DoGameboardGUI()
 {
+	// Top 20% of the screen
+	GUILayout.BeginArea(Rect(0, 0, Screen.width, Screen.height*0.2));
+	GUILayout.BeginHorizontal();
+
+	// Left
+	/*
+	GUILayout.BeginVertical();
+	GUILayout.Space(Screen.width*40);
+	GUILayout.EndVertical();
+	*/
+	GUILayout.FlexibleSpace();
+	
+	// Middle
+	GUILayout.BeginVertical();
+	GUILayout.TextField(String.Format("Turns Left: {0}", current_round));
+	GUILayout.TextField((player_turn ? "Player" : "Opponent"));
+	GUI.enabled = player_turn ? true : false;
+	if(GUILayout.Button("End Turn"))
+	{
+		EndTurn();
+	}
+	GUI.enabled = true;
+	GUILayout.EndVertical();
+
+	// Right
+	/*
+	GUILayout.BeginVertical();
+	GUILayout.Space(Screen.width*40);
+	GUILayout.EndVertical();
+	*/
+	GUILayout.FlexibleSpace();
+	
+	GUILayout.EndHorizontal();
+	GUILayout.EndArea();
 }
 
 function DoMenuGUI()
@@ -217,6 +318,23 @@ function DoMenuGUI()
 			break;
 	}
 	
+	GUILayout.EndArea();
+}
+
+function DoGameOverGUI()
+{
+	var rect : Rect = Rect(Screen.width*0.3, Screen.height*0.3, Screen.width*0.3, Screen.height*0.3);
+	
+	GUILayout.BeginArea(rect);
+	GUILayout.Box(guiBG_default);
+	GUILayout.EndArea();
+	
+	GUILayout.BeginArea(rect);
+	GUILayout.TextField("You are a winner!  (Based primarily on your participation)");
+	if(GUILayout.Button("Quit"))
+	{
+		Application.LoadLevel("init_scene");
+	}
 	GUILayout.EndArea();
 }
 

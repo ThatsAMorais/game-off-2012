@@ -36,9 +36,18 @@ private var in_hand : GameObject = null;
 private var selected : boolean = false;
 private var action_points = ACTION_POINTS_PER_TURN;
 private var target_position : Vector2;
+private var has_target : boolean = false;
+private var previousPathHighlight : Vector2;
 
 // Animate variables
 private var newly_created_rotation = 0;
+
+function OnDestroy()
+{
+	//TODO: Do a "killed" animation	
+}
+
+
 
 function Start ()
 {
@@ -58,6 +67,19 @@ function Update ()
 	{
 		DoNewUnitAnimation();
 	}
+	
+	
+	/*
+	if(has_target)
+	{
+		
+		
+		if(GetPosition() == GetTarget())
+		{
+			has_target = false;
+		}
+	}
+	*/
 }
 
 function OnMouseEnter()
@@ -70,14 +92,49 @@ function OnMouseExit()
     //renderer.material.color = startcolor;
 }
 
+function GetTarget()
+{
+	return target_position;
+}
+
 function SetTarget(x : int, y : int)
 {
+	// TODO: Upon setting this target, a path will have been generated between
+	//		this unit's current position and the target.  By enabling has_target
+	//		the Update() will churn through the positions until the user has
+	//		either reached their target or run out of action-points for the turn
+
 	target_position = new Vector2(x,y);
+	Debug.Log(String.Format("SetTarget {0}",target_position));
+	//has_target = true;
+	
+	// Instantaneous movement without regard to action points
+	// TODO: Go to an animation-based system
+	// TODO: Take into account action-points
+	GetCellScript(x, y).MoveTo(gameObject);
+}
+
+function MouseoverTarget(position : Vector2)
+{
+	// TODO: Determine the path between this cell's (x,y) and (position)
+	// TODO: Retain a list of the path from this cell's (x,y) to (position)
+	if(null != previousPathHighlight)
+	{
+		GameObject.Find(String.Format("HexPlain/cell_{0}_{1}_",
+									  previousPathHighlight.x,
+									  previousPathHighlight.y)).GetComponent(CellScript).SetPathHighlight(false, "valid");
+	}
+	
+	GameObject.Find(String.Format("HexPlain/cell_{0}_{1}_", position.x, position.y)).GetComponent(CellScript).SetPathHighlight(true, "valid");
+	
+	// TODO: This will be in the path-list
+	previousPathHighlight = position;
 }
 
 function SetPosition(x : int, y : int)
 {
-	world_position = new Vector2(x,y);
+	Debug.Log(String.Format("SetPosition ({0},{1})", x, y));
+	world_position = Vector2(x,y);
 	RotateToHeading();
 }
 

@@ -72,11 +72,12 @@ private var mouseoverHighlightMod : float = 0.5;
 private var show_failed_target : boolean = false;
 
 private var selectable : boolean = false;
+private var currentMouseoverCell : Vector2;
 
 private var owner : String = "open";
 
-function Start () {
-
+function Start ()
+{
 	// Parse this cell's position
 	var delimiter : String = "_";
 	var coordStrings = gameObject.name.Split(delimiter.ToCharArray());
@@ -97,6 +98,7 @@ function SetupParticleSystem()
 	particleSystem.startSpeed = 0.75;
 	particleSystem.startSize = 0.25;	
 }
+
 
 function Update ()
 {
@@ -157,15 +159,18 @@ function Target(x : int, y : int)
 {
 	var piece : GameObject = GetInhabitant();
 	
-	if(selectable)
+	if(SlotInhabited())
 	{
-		if(piece.name.Contains("forker") || piece.name.Contains("brancher"))
+		if(selectable)
 		{
-			piece.GetComponent(UnitScript).SetTarget(x,y);
-		}
-		else if(piece.name.Contains("base"))
-		{
-			piece.GetComponent(BaseScript).SetTarget(x,y);
+			if(piece.name.Contains("forker") || piece.name.Contains("brancher"))
+			{
+				piece.GetComponent(UnitScript).SetTarget(x,y);
+			}
+			else if(piece.name.Contains("base"))
+			{
+				piece.GetComponent(BaseScript).SetTarget(x,y);
+			}
 		}
 	}
 }
@@ -228,46 +233,70 @@ function Selected(val : boolean)
 	}
 }
 
+
+
+function MouseoverTarget(position : Vector2)
+{
+	if(SlotInhabited())
+	{
+		var piece : GameObject = GetInhabitant();
+
+		currentMouseoverCell = position;
+				
+		if(piece.name.Contains("forker") || piece.name.Contains("brancher"))
+		{
+			piece.GetComponent(UnitScript).MouseoverTarget(position);
+		}
+		else if(piece.name.Contains("base"))
+		{
+			piece.GetComponent(BaseScript).MouseoverTarget(position);
+		}
+	}
+}
+
 function DoSelectedGUI(rect : Rect)
 {
 	var piece : GameObject = GetInhabitant();
 	var guiBG : Texture = guiBG_default;
 
-	if(selectable)
+	if(SlotInhabited())
 	{
-		if(piece.name.Contains("forker") || piece.name.Contains("brancher"))
+		if(selectable)
 		{
-			if(piece.GetComponent(UnitScript).IsPlayer())
+			if(piece.name.Contains("forker") || piece.name.Contains("brancher"))
 			{
-				guiBG = guiBG_player;
+				if(piece.GetComponent(UnitScript).IsPlayer())
+				{
+					guiBG = guiBG_player;
+				}
+				else
+				{
+					guiBG = guiBG_opponent;
+				}
+	
+				piece.GetComponent(UnitScript).DoSelectedGUI(rect, guiBG);
 			}
-			else
+			else if(piece.name.Contains("base"))
 			{
-				guiBG = guiBG_opponent;
+				if(piece.GetComponent(BaseScript).IsPlayer())
+				{
+					guiBG = guiBG_player;
+				}
+				else
+				{
+					guiBG = guiBG_opponent;
+				}
+	
+				piece.GetComponent(BaseScript).DoSelectedGUI(rect, guiBG);
 			}
-
-			piece.GetComponent(UnitScript).DoSelectedGUI(rect, guiBG);
-		}
-		else if(piece.name.Contains("base"))
-		{
-			if(piece.GetComponent(BaseScript).IsPlayer())
+			else if(piece.name.Contains("bush"))
 			{
-				guiBG = guiBG_player;
+				piece.GetComponent(BushScript).DoSelectedGUI(rect, guiBG);
 			}
-			else
+			else if(piece.name.Contains("branch") || piece.name.Contains("fork") || piece.name.Contains("fortification"))
 			{
-				guiBG = guiBG_opponent;
+				piece.GetComponent(PickupScript).DoSelectedGUI(rect, guiBG);
 			}
-
-			piece.GetComponent(BaseScript).DoSelectedGUI(rect, guiBG);
-		}
-		else if(piece.name.Contains("bush"))
-		{
-			piece.GetComponent(BushScript).DoSelectedGUI(rect, guiBG);
-		}
-		else if(piece.name.Contains("branch") || piece.name.Contains("fork") || piece.name.Contains("fortification"))
-		{
-			piece.GetComponent(PickupScript).DoSelectedGUI(rect, guiBG);
 		}
 	}
 }
@@ -484,6 +513,10 @@ function ClearInhabitant()
 {
 	inhabitant_occupied = false;
 	inhabitant = null;
+	
+	Selected(false);
+	Targeted(false);
+	OnMouseExit();
 }
 
 function SetInhabitant(new_inhabitant : GameObject) : boolean
@@ -572,7 +605,7 @@ function MoveTo(piece : GameObject) : boolean
 	
 	/* Name must be set before this point */
 	
-	SetInhabitant(piece);
+	result = SetInhabitant(piece);
 	
 	return result;
 }
