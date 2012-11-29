@@ -604,7 +604,6 @@ function SetHeadingTowardPosition(position : Vector2) : int
 				direction = HEADING_BACK_LEFT;
 			}
 		}
-
 	}
 	
 	SetHeading(direction);
@@ -661,8 +660,6 @@ function PositionValid(position : Vector2) : boolean
 
 function TossItem(item : GameObject) : boolean
 {
-	/*SetupPiece(item, neighboringPos.x, neighboringPos.y, item_placement, item.name);*/
-	
 	var result : boolean = false;
 	var current_heading : int = HEADING_BACK;
 	var neighbor = GetNeighbor(current_heading);

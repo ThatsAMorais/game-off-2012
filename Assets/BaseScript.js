@@ -2,6 +2,14 @@
 
 import System.Collections.Generic;
 
+private var HEADING_STRAIGHT = 0;
+private var HEADING_LEFT = 60;
+private var HEADING_BACK_LEFT = 120;
+private var HEADING_RIGHT = -60;
+private var HEADING_BACK_RIGHT = -120;
+private var HEADING_BACK = 180;
+
+
 var MAX_UNITS_PER_BASE = 15;
 var CONSTRUCTION_TIME : float = 2;
 var MAX_BASE_HEALTH = 1024;
@@ -118,17 +126,16 @@ function InitializeBase()
 
 function SetPosition(x : int, y : int)
 {
-	var modifier_x : int = 0;
-	var modifier_y : int = 1;
+	var heading : int = HEADING_LEFT;
 
 	world_position = Vector2(x,y);
 	
 	if(15 < world_position.x)
 	{
-		modifier_x = -1;
-		modifier_y = 0;
+		heading = HEADING_RIGHT;
 	}
 
+	unit_creation_waypoint = new Vector2(world_position.x + modifier_x, world_position.y + modifier_y);
 	SetTarget(world_position.x + modifier_x, world_position.y + modifier_y);
 }
 
@@ -248,15 +255,51 @@ function MoveTo(piece : GameObject, x : int, y : int)
 	GetCellScript(x,y).MoveTo(piece);
 }
 
+function PlaceUnit(unit : GameObject, x : int, y : int) : boolean
+{
+	var result : boolean = true;
+	
+	while(!MoveTo(forkerClone, placementPos.x, placementPos.y))
+	{
+		placementPos = GetCellScript(world_position.x, world_position.y).GetNeighbor();
+		
+		if(placementPos.x == x && placementPos.y == y)
+		{
+			Debug.Log("Failed to place Forker");
+			result = false;
+			break;
+		}
+	}
+	
+	return result;
+}
+
+function SetupUnit(unit : GameObject)
+{
+	if(unit)
+	{	
+		var unitScript : UnitScript = unit.GetComponent(UnitScript);
+		unitScript.SetTeam(player);
+		unitScript.SetHomeBase(gameObject);
+		unitScript.SetTarget(GetTarget().x, GetTarget().y);
+		unitScript.SetPosition(position.x, position.y);
+	}
+}
+
 function CreateForker(x : int, y : int, name : String) : GameObject
 {
 	var forkerClone : GameObject = Instantiate(forker).gameObject;
 	forkerClone.name = name;
+	var placementPos : Vector2 = new Vector2(x,y);
 	
-	MoveTo(forkerClone, x, y);
-	
-	forkerCount++;
-	number_of_forkers_alive++;
+	if(PlaceUnit(forkerClone, x, y))
+	{
+		forkerCount++;
+		number_of_forkers_alive++;
+		
+		SetupUnit(forkerClone);				
+		AddUnit(newUnit);
+	}
 	
 	return forkerClone;
 }
@@ -266,7 +309,9 @@ function CreateBrancher(x : int, y : int, name : String) : GameObject
 	var brancherClone : GameObject = Instantiate(brancher).gameObject;
 	brancherClone.name = name;
 	
-	MoveTo(brancherClone, x, y);
+	if(PlaceUnit(forkerClone, x, y))
+	{
+		MoveTo(brancherClone, x, y);
 	
 	brancherCount++;
 	number_of_branchers_alive++;
@@ -301,20 +346,12 @@ function CreateUnit(unit : String)
 	switch(unit)
 	{
 		case "forker":
-			newUnit = CreateForker(position.x, position.y, name);
+			newUnit = CreateForker(unit_creation_waypoint.x, unit_creation_waypoint.y, name);
 			break;
 		case "brancher":
-			newUnit = CreateBrancher(position.x, position.y, name);
+			newUnit = CreateBrancher(unit_creation_waypoint.x, unit_creation_waypoint.y, name);
 			break;
 	}
-	
-	var unitScript : UnitScript = newUnit.GetComponent(UnitScript);
-	unitScript.SetTeam(player);
-	unitScript.SetHomeBase(gameObject);
-	unitScript.SetTarget(GetTarget().x, GetTarget().y);
-	unitScript.SetPosition(position.x, position.y);
-	
-	AddUnit(newUnit);
 }
 
 function UnitDeath(unitName : String)

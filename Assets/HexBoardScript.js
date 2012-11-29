@@ -415,32 +415,6 @@ function CreateGameboard()
 {
 	var tex : Texture2D = null;
 
-	// This loop is O(n^2), but 32x32 iterations might not be too bad...
-	for(var x=0; x < hi_index; x++)
-	{
-		for(var y=0; y < hi_index; y++)
-		{
-			// Determine a random texture from the two defined.
-			if(1 == Random.Range(1,3))
-			{
-				tex = groundTexture2;
-			}
-			else
-			{
-				tex = groundTexture1;
-			}
-			
-			// Set the texture
-			gameObject.Find(String.Format("/HexPlain/cell_{0}_{1}_", x, y)).renderer.material.mainTexture = tex;
-			
-			// Place bushes
-			if((bushesPlaced < init_number_of_bushes) && (2 == Random.Range(1,20)))
-			{
-				CreateBush(x, y);
-			}
-		}
-	}
-	
 	var playerPos : Vector2 = Vector2(3,3);
 	var opponentPos : Vector2 = Vector2(28,28);
 
@@ -467,4 +441,30 @@ function CreateGameboard()
 	}
 	
 	GetCamControl().SetPosition(playerPos);
+
+	// This loop is O(n^2), but 32x32 iterations might not be too bad...
+	for(var x=0; x < hi_index; x++)
+	{
+		for(var y=0; y < hi_index; y++)
+		{
+			// Determine a random texture from the two defined.
+			if(1 == Random.Range(1,3))
+			{
+				tex = groundTexture2;
+			}
+			else
+			{
+				tex = groundTexture1;
+			}
+			
+			// Set the texture
+			gameObject.Find(String.Format("/HexPlain/cell_{0}_{1}_", x, y)).renderer.material.mainTexture = tex;
+			
+			// Place bushes
+			if((bushesPlaced < init_number_of_bushes) && (2 == Random.Range(1,20)))
+			{
+				CreateBush(x, y);
+			}
+		}
+	}
 }
