@@ -1,6 +1,6 @@
 #pragma strict
 
-
+import System.Collections.Generic;
 
 // Public
 var fork : GameObject;
@@ -10,7 +10,6 @@ var team_player : boolean = false;
 var home_base : GameObject = null;
 var unitType : String;
 var ACTION_POINTS_PER_TURN : int = 3;
-var dead : boolean = false;
 var MAX_UNIT_HEALTH = 64;
 
 private var HEADING_STRAIGHT = 0;
@@ -20,6 +19,14 @@ private var HEADING_RIGHT = -60;
 private var HEADING_BACK_RIGHT = -120;
 private var HEADING_BACK = 180;
 
+private var BRANCH : String = "branch";
+private var BASE : String = "base";
+private var BUSH : String = "bush";
+private var FORK : String = "fork";
+private var FORTIFICATION : String = "fortification";
+private var FORKER : String = "forker";
+private var BRANCHER : String = "brancher";
+
 var heading : int = HEADING_STRAIGHT;
 
 // Stats
@@ -28,58 +35,410 @@ private var forkCount : int = 0;
 private var fortificationCount : int = 0;
 
 // States and Status
+private var MAX_BRANCHES : int = 4;
 private var newly_created : boolean = true;
-private var branches_held : int = 0;
+private var branches : List.<GameObject> = List.<GameObject>();
+private var branch_pos : List.<float> = List.<float>();
 private var world_position : Vector2 = Vector2(-1,-1);
 private var in_hand : GameObject = null;
 
 private var selected : boolean = false;
 private var action_points = ACTION_POINTS_PER_TURN;
 private var target_position : Vector2;
+private var path : List.<Vector2> = new List.<Vector2>();
 private var has_target : boolean = false;
 private var previousPathHighlight : Vector2;
+private var time_since_last_move : int = 1.0;
+
+private var FORK_DAMAGE = 0.3;
 
 // Animate variables
 private var newly_created_rotation = 0;
 
 function OnDestroy()
 {
+	DropItems();
 	//TODO: Do a "killed" animation	
 }
-
-
 
 function Start ()
 {
 	// Determine the unit-type
-	unitType = gameObject.name.Contains("forker") ? "forker" : "brancher";
-	gameObject.transform.Rotate(gameObject.name.Contains("forker") ? 0 : 90, 0, 0);
+	unitType = gameObject.name.Contains(FORKER) ? FORKER : BRANCHER;
+	gameObject.transform.Rotate(gameObject.name.Contains(FORKER) ? 0 : 90, 0, 0);
+	
+	branch_pos.Add(0.7);
+	branch_pos.Add(0.6);
+	branch_pos.Add(0.5);
+	branch_pos.Add(0.4);
 	
 	// Disabling this for now.
 	newly_created = false;
-	
 }
 
 function Update ()
 {
+	if(health <= 0)
+	{
+		// Game Over, man!
+		Kill();
+	}
+
 	// Do the unit created animation
 	if(newly_created)
 	{
 		DoNewUnitAnimation();
 	}
 	
-	
-	/*
-	if(has_target)
+	if(selected && !GetCellScript(world_position.x, world_position.y).IsSelected())
 	{
-		
-		
-		if(GetPosition() == GetTarget())
+		selected = false;
+	}
+	
+	if(selected)
+	{
+		//TODO
+	}
+	
+	if(has_target && 0 < GetActionPoints())
+	{
+		if(time_since_last_move >= 0.5)
+		{	
+			// Get the neighbor in the direction we are facing (which is the direction of our target)		
+			var nextCellPos : Vector2 = GetNeighbor(GetHeading());
+			
+			if(GetCellScript(nextCellPos.x, nextCellPos.y).SlotInhabited())
+			{
+				// Something is there
+
+				if(nextCellPos == GetTarget())
+				{
+					var inhabitant : GameObject = GetCellScript(nextCellPos.x,nextCellPos.y).GetInhabitant();
+					var neighborName : String = inhabitant.name;
+					
+					// Opponent Base
+					if(neighborName.Contains(team_player ? "opponent_base" : "player_base"))
+					{
+						// This is the opponent's base
+						if(null != in_hand && in_hand.name.Contains(FORK))
+						{
+							// Fork
+							Fork(inhabitant);
+						}
+						else
+						{
+							has_target = false;
+						}
+					}
+					// Friendly Base
+					if(neighborName.Contains(team_player ? "player_base" : "opponent_base"))
+					{
+						if(0 < branches.Count)
+						{
+							GiveBranches(inhabitant, branches.Count);
+						}
+						has_target = false;
+					}
+					// Unit
+					else if(neighborName.Contains(FORKER) || neighborName.Contains(BRANCHER))
+					{
+						// Check if this unit is a friend or foe
+						
+						// Friend
+						if(IsPlayer() == inhabitant.GetComponent(UnitScript).IsPlayer())
+						{
+							MoveTowardHeading();
+							has_target = false;
+						}
+						// Foe
+						else
+						{
+							if(in_hand.name.Contains(FORK))
+							{
+								// Fork
+								Fork(inhabitant);
+							}
+							else
+							{
+								// Push
+								Push(inhabitant, GetHeading());
+							}
+						}
+					}
+					// Bush
+					else if(neighborName.Contains(BUSH))
+					{
+						PickBranch(inhabitant);
+					}
+					// Branch
+					else if((neighborName.Contains(BRANCH)) ||
+							(neighborName.Contains(FORK)) ||
+							(neighborName.Contains(FORTIFICATION)))
+					{
+						Pickup(inhabitant);
+					}
+				}
+				else
+				{
+					// Go around
+					MoveTowardHeading();
+				}
+			}
+			else
+			{			
+				MoveTowardHeading();
+			}
+						
+			// If we have walked into the target cell, then stop
+			if(has_target)
+			{
+				if(GetPosition() == GetTarget())
+				{
+					has_target = false;
+				} 
+				else
+				{
+					// Look toward the target
+					SetHeadingTowardPosition(GetTarget());
+					time_since_last_move = 0;
+				}
+			}
+		}
+		else
 		{
-			has_target = false;
+			time_since_last_move += Time.deltaTime;
 		}
 	}
-	*/
+}
+
+function TakeDamage(damage : float)
+{
+	if(in_hand.name.Contains(FORTIFICATION))
+	{
+		in_hand.GetComponent(PickupScript).Damage(damage);
+	}
+	else
+	{
+		health -= damage;
+	}
+}
+
+function DropItems()
+{
+	if(null != in_hand)
+	{
+		TossItem(in_hand);
+		in_hand = null;
+	}
+	else
+	{
+		DropBranch(MAX_BRANCHES);
+	}
+}
+
+function DropItem()
+{
+	if(null != in_hand)
+	{
+		TossItem(in_hand);
+		in_hand = null;
+	}
+	else
+	{	
+		DropBranch(1);
+	}
+}
+
+function DropBranch(numBranches : int)
+{
+	for(var b=0; 0 < branches.Count && b < numBranches; b++)
+	{
+		TossItem(branches[0]);
+		branches.RemoveAt(0);
+	}
+}
+
+function GiveBranches(piece : GameObject, numBranches : int)
+{
+	var branches_taken : int = 0;
+	
+	if(piece.name.Contains(BASE))
+	{
+		branches_taken = piece.GetComponent(BaseScript).TakeBranches(branches.GetRange(0, numBranches));
+	}
+	else if(piece.name.Contains(FORKER) || piece.name.Contains(BRANCHER))
+	{
+		branches_taken = piece.GetComponent(UnitScript).TakeBranches(branches.GetRange(0, numBranches));
+	}
+	
+	// Remove the corresponding branches
+	for(; 0 < branches_taken; branches_taken--)
+	{
+		branches.RemoveAt(0);
+	}
+}
+
+function TakeBranches(branchesGiven : List.<GameObject>)
+{
+	var branches_taken : int = 0;
+	
+	while(MAX_BRANCHES < branches.Count || branches_taken == branchesGiven.Count)
+	{
+		branches.Add(branchesGiven[branches_taken]);
+		branches_taken++;
+	}
+	
+	return branches_taken;
+}
+
+function PickBranch(bush : GameObject)
+{
+	// Cannot take a branch if carrying a weapon
+	if(4 > branches.Count && null == in_hand)
+	{
+		branches.Add(bush.GetComponent(BushScript).GetBranch());
+	}
+}
+
+function Fork(piece : GameObject)
+{
+	if(piece.name.Contains(BASE))
+	{
+		piece.GetComponent(BaseScript).Forked();
+	}
+	else if(piece.name.Contains(FORKER) || piece.name.Contains(BRANCHER))
+	{
+		piece.GetComponent(UnitScript).Forked();
+	}
+	
+	// Get the cell of the targeted Cell
+	UseActionPoints(1);
+}
+
+function Forked()
+{
+	// Take Damage
+	TakeDamage(FORK_DAMAGE);
+}
+
+function Push(unit : GameObject, heading : int)
+{
+	var push_success : boolean = false;
+	var nextCellPos : Vector2 = GetNeighbor(heading);
+
+	// Attempt to push the unit
+	push_success = unit.GetComponent(UnitScript).Pushed(heading);
+	if(push_success)
+	{
+		// If successful, move to the location that was pushed
+		GetCellScript(nextCellPos.x, nextCellPos.y).MoveTo(gameObject);
+		UseActionPoints(1);
+	}
+}
+
+function Pushed(heading : int) : boolean
+{
+	var nextCellPos : Vector2 = GetNeighbor(heading);
+	return GetCellScript(nextCellPos.x, nextCellPos.y).MoveTo(gameObject);
+}
+
+function Pickup(pickup : GameObject)
+{
+	// 	If a Fork or Fortification -> Toss current Pickup, Pickup target
+	if((0 == branches.Count) && (pickup.name.Contains(FORK) || pickup.name.Contains(FORTIFICATION)))
+	{
+		GraspItem(pickup);
+	}
+	
+	// If picking up a Branch, add to the pile
+	else if((null == in_hand) && (pickup.name.Contains(BRANCH)))
+	{
+		branches.Add(pickup);
+	}
+}
+
+function MoveTowardHeading()
+{
+	var currentHeading : int = HEADING_STRAIGHT;
+	var slotInhabited = true;
+	var nextCellPos : Vector2;
+	
+	// Break when the first uninhabited slot is found
+	while(slotInhabited && has_target)
+	{	
+		nextCellPos = GetNeighbor(currentHeading);
+		
+		if(!PositionValid(nextCellPos))
+		{
+			continue;
+		}
+		
+		slotInhabited = GetCellScript(nextCellPos.x, nextCellPos.y).SlotInhabited();
+		
+		if(slotInhabited)
+		{			
+			switch(currentHeading)
+			{
+				case HEADING_STRAIGHT:
+					currentHeading = HEADING_RIGHT;
+					break;
+				case HEADING_RIGHT:
+					currentHeading = HEADING_LEFT;
+					break;
+				case HEADING_LEFT:
+					currentHeading = HEADING_BACK_RIGHT;
+					break;
+				case HEADING_BACK_RIGHT:
+					currentHeading = HEADING_BACK_LEFT;
+					break;
+				case HEADING_BACK_LEFT:
+					currentHeading = HEADING_BACK;
+					break;
+				case HEADING_BACK:
+					// Stuck on all sides
+					has_target = false;
+					break;
+			}
+		}
+	}
+	
+	if(has_target)
+	{
+		if(false == GetCellScript(nextCellPos.x, nextCellPos.y).MoveTo(gameObject))
+		{
+			Debug.Log("Failed to move to nextCellPos");
+		}
+		else
+		{
+			UseActionPoints(1);
+		}
+	}
+}
+
+
+/*
+function FindPathToPosition(targetPos : Vector2)
+{
+	// Clear the existing path
+	path.Clear();
+	
+	// Recursively determine the path
+	FindDirectionOfTarget(GetPosition(), targetPos);
+}*/
+
+function diff(a : int, b : int) : int
+{
+	return (a >= b) ? (a - b) : (b - a);
+}
+
+function GetActionPoints() : int
+{
+	return action_points;
+}
+
+function UseActionPoints(ap_used : int)
+{
+	action_points -= ap_used;
 }
 
 function OnMouseEnter()
@@ -92,7 +451,7 @@ function OnMouseExit()
     //renderer.material.color = startcolor;
 }
 
-function GetTarget()
+function GetTarget() : Vector2
 {
 	return target_position;
 }
@@ -106,12 +465,8 @@ function SetTarget(x : int, y : int)
 
 	target_position = new Vector2(x,y);
 	Debug.Log(String.Format("SetTarget {0}",target_position));
-	//has_target = true;
-	
-	// Instantaneous movement without regard to action points
-	// TODO: Go to an animation-based system
-	// TODO: Take into account action-points
-	GetCellScript(x, y).MoveTo(gameObject);
+	SetHeadingTowardPosition(target_position);
+	has_target = true;
 }
 
 function MouseoverTarget(position : Vector2)
@@ -190,7 +545,7 @@ function FormatUnitName(item : String) : String
 {
 	return String.Format("{0}_{1}",
 						item,
-		 				(item == "fork" ? GetForkCount() : GetFortificationCount()));
+		 				(item == FORK ? GetForkCount() : GetFortificationCount()));
 }
 
 function RotateToHeading()
@@ -205,6 +560,58 @@ function SetHeading(newHeading : int)
 	RotateToHeading();
 }
 
+function SetHeadingTowardPosition(position : Vector2) : int
+{
+	var startPoint : Vector2 = GetPosition();
+	var diffX : float = diff(startPoint.x, position.x);
+	var diffY : float = diff(startPoint.y, position.y);
+	var slope : float = diffY / diffX;
+	var direction : int = 0;
+	
+	if(0.5 >= slope)
+	{
+		// Move along x
+		if(position.x > startPoint.x)
+		{
+			direction = HEADING_STRAIGHT;
+		}
+		else
+		{
+			direction = HEADING_BACK;
+		}
+	}
+	else
+	{
+		if(position.x > startPoint.x)
+		{
+			if(position.y > startPoint.y)
+			{
+				direction = HEADING_RIGHT;
+			}
+			else
+			{
+				direction = HEADING_LEFT;
+			}
+		}
+		else
+		{
+			if(position.y > startPoint.y)
+			{
+				direction = HEADING_BACK_RIGHT;
+			}
+			else
+			{
+				direction = HEADING_BACK_LEFT;
+			}
+		}
+
+	}
+	
+	SetHeading(direction);
+	
+	return direction;
+}
+
 function GetHeading() : int
 {
 	return heading;
@@ -213,8 +620,18 @@ function GetHeading() : int
 function GetCellScript(x : int, y : int) : CellScript
 {
 	var pos : Vector2 = new Vector2((x == -1) ? world_position.x : x, (y == -1) ? world_position.y : y);
+	var cell : GameObject = GameObject.Find(String.Format("HexPlain/cell_{0}_{1}_", pos.x, pos.y));
 	
-	return GameObject.Find(String.Format("HexPlain/cell_{0}_{1}_", pos.x, pos.y)).GetComponent(CellScript);
+	if(null != cell)
+	{
+		return cell.GetComponent(CellScript);
+	}
+	else
+	{
+		Debug.Log(String.Format("Error: {0}", Vector2(x,y)));
+	}
+	
+	return null;
 }
 
 function GetNeighbor(direction : int) : Vector2
@@ -247,23 +664,19 @@ function TossItem(item : GameObject) : boolean
 	/*SetupPiece(item, neighboringPos.x, neighboringPos.y, item_placement, item.name);*/
 	
 	var result : boolean = false;
-	
-	if(false == GetCellScript(world_position.x, world_position.y).MoveTo(item))
-	{
-		var current_heading = HEADING_BACK;
-		var neighbor = GetNeighbor(current_heading);
+	var current_heading : int = HEADING_BACK;
+	var neighbor = GetNeighbor(current_heading);
 
-		while(false == GetCellScript(neighbor.x, neighbor.y).MoveTo(item))
+	while(false == GetCellScript(neighbor.x, neighbor.y).MoveTo(item))
+	{
+		current_heading += HEADING_RIGHT;
+		
+		if((-1 * HEADING_BACK) <= current_heading)
 		{
-			current_heading += HEADING_RIGHT;
-			
-			if((-1 * HEADING_BACK) <= current_heading)
-			{
-				break;
-			}
-			
-			neighbor = GetNeighbor(current_heading);
+			break;
 		}
+		
+		neighbor = GetNeighbor(current_heading);
 	}
 	
 	return result;
@@ -274,17 +687,18 @@ function GraspItem(item : GameObject)
 	if(null != in_hand)
 	{
 		TossItem(in_hand);
+		in_hand = null;
 	}
 	
 	item.transform.parent = gameObject.transform;
-	if(item.name.Contains("fork"))
+	if(item.name.Contains(FORK))
 	{
 		item.transform.localPosition = Vector3(-1,1,0);
 		item.transform.localRotation = Quaternion.identity;
 		item.transform.Rotate(Vector3(0,180,90));
 		item.transform.localScale = Vector3(0.2,0.2,0.2);
 	}
-	else if(item.name.Contains("fortification"))
+	else if(item.name.Contains(FORTIFICATION))
 	{
 		item.transform.localPosition = Vector3(-1,1,0);
 		item.transform.localScale = Vector3(0.3,0.3,0.2);
@@ -295,17 +709,21 @@ function GraspItem(item : GameObject)
 
 function CreateItem()
 {
-	var name : String = FormatUnitName(unitType == "forker" ? "fork" : "fortification");
+	var name : String = FormatUnitName(unitType == FORKER ? FORK : FORTIFICATION);
 	var item : GameObject;
+	
 	switch(unitType)
 	{
-		case "forker":
+		case FORKER:
 			item = CreateFork();
 			break;
-		case "brancher":
+		case BRANCHER:
 			item = CreateFortification();
 			break;
 	}
+	
+	// Clear the used resources
+	branches.Clear();
 	
 	item.name = name;
 	
@@ -342,8 +760,7 @@ function Kill()
 {
 	if(GetCellScript(world_position.x, world_position.y).GetComponent(CellScript).DestroyInhabitant())
 	{
-		dead = true;
-		home_base.GetComponent(BaseScript).UnitDeath(unitType);
+		home_base.GetComponent(BaseScript).UnitDeath(gameObject.name);
 	}
 }
 
@@ -358,10 +775,31 @@ function DoSelectedGUI(rect : Rect, guiBG : Texture)
 
 	DoStatsGUI();
 	
-	if(GUILayout.Button(String.Format("Create {0}", GetUnitType() == "forker" ? "Fork" : "Fortification")))
+	if(MAX_BRANCHES <= branches.Count)
 	{
-		CreateItem();
+		if(GUILayout.Button(String.Format("Create {0}", GetUnitType() == FORKER ? "Fork" : "Fortification")))
+		{
+			CreateItem();
+		}
 	}
+	else
+	{
+		GUI.enabled = false;
+		if(GUILayout.Button(String.Format("{0}/{1} Branches needed to make {2}",
+										  branches.Count,
+										  MAX_BRANCHES,
+										  GetUnitType() == FORKER ? "Fork" : "Fortification"))){}
+		GUI.enabled = true;
+	}
+	
+	GUI.enabled = ((null != in_hand) || (0 < branches.Count));
+	if(GUILayout.Button(String.Format("Drop {0}",
+									  ((null != in_hand) ? (in_hand.name.Contains(FORK) ? "Fork" : "Fortification") :
+									  					   (0 < branches.Count ? "Branch" : "")))))
+	{
+		DropItem();
+	}
+	GUI.enabled = true;
 	
 	GUILayout.FlexibleSpace();
 	
@@ -395,9 +833,10 @@ function DoStatsGUI()
 	
 	GUILayout.TextField(String.Format("Unit : {0} ({1})", GetUnitType(), isPlayer ? "Ally" : "Enemy"));
 	GUILayout.TextField(String.Format("Health: {0}", (GetHealth()/MAX_UNIT_HEALTH)*100));
+	GUILayout.TextField(String.Format("Branches: {0}", branches.Count));
 	GUILayout.TextField(String.Format("Number of {0}s made : {1}",
-									 GetUnitType() == "forker" ? "fork" : "fortification",
-									 GetUnitType() == "forker" ? GetForkCount() : GetFortificationCount()));
+									 GetUnitType() == FORKER ? FORK : FORTIFICATION,
+									 GetUnitType() == FORKER ? GetForkCount() : GetFortificationCount()));
 }
 
 function Selected(selected : boolean) : boolean
@@ -405,6 +844,7 @@ function Selected(selected : boolean) : boolean
 	// TODO: Do a Selected animation
 	
 	// TODO: React to being selected in some way
+	selected = true;
 		
 	return true;
 }

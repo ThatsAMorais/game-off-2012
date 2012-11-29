@@ -1,11 +1,12 @@
 #pragma strict
 
-var MAX_PICKUP_CONDITION = 100;
+var MAX_PICKUP_CONDITION = 1.0;
 private var condition : int = MAX_PICKUP_CONDITION;
 private var world_position : Vector2 = Vector2(-1,-1);
 private var itemType : String;
 
-function Start () {
+function Start ()
+{
 	if(gameObject.name.Contains("fork"))
 	{
 		itemType = "fork";
@@ -34,7 +35,7 @@ function GetPosition() : Vector2
 	return world_position;
 }
 
-function GetCondition() : int
+function GetCondition() : float
 {
 	return condition;
 }
@@ -44,9 +45,10 @@ function GetItemType() : String
 	return itemType;
 }
 
-function Damage(dmg : int)
+function Damage(dmg : float)
 {
 	condition -= dmg;
+	return condition;
 }
 
 function Targeted(selection : GameObject)

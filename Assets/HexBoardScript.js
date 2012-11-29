@@ -41,7 +41,6 @@ var BUTTON_W = 300;
 var BUTTON_H = 200;
 var BUTTONS_PER_ROW : int = 1;
 
-
 function Start ()
 {
 	CreateInitScene();

@@ -135,6 +135,11 @@ function GetPosition() : Vector2
 	return myLocation;
 }
 
+function GetRealPosition() : Vector3
+{
+	return gameObject.transform.position;
+}
+
 function OnMouseEnter()
 {
 	if(SlotInhabited())
@@ -191,6 +196,11 @@ function Targeted(val : boolean)
 			targetedHighlightTimediff = 0;
 		}
 	}
+}
+
+function IsSelected() : boolean
+{
+	return selectedHighlightOn;
 }
 
 function Selected(val : boolean)
@@ -489,6 +499,11 @@ function GetInhabitant() : GameObject
 	return inhabitant;
 }
 
+function GetInhabitantName() : String
+{
+	return inhabitant.name;
+}
+
 function SlotInhabited() : boolean
 {
 	return inhabitant_occupied;
@@ -542,7 +557,9 @@ function SetInhabitant(new_inhabitant : GameObject) : boolean
 			new_inhabitant.GetComponent(UnitScript).SetPosition(myLocation.x, myLocation.y);
 		}
 		else if(new_inhabitant.name.Contains("base"))
-		{			
+		{	
+			Debug.Log("Positioning Base");
+			
 			position = new_inhabitant.GetComponent(BaseScript).GetPosition();
 		
 			if(PositionValid(position.x, position.y))
@@ -555,6 +572,8 @@ function SetInhabitant(new_inhabitant : GameObject) : boolean
 			PositionInhabitant(new_inhabitant, 3.0);
 			
 			new_inhabitant.GetComponent(BaseScript).SetPosition(myLocation.x, myLocation.y);
+			
+			Debug.Log("Base Positioned");
 		}
 		else if(new_inhabitant.name.Contains("bush"))
 		{
@@ -652,6 +671,7 @@ function CreateBase(name : String, player : boolean, baseType : String) : boolea
 	result = MoveTo(baseClone);
 	if(result)
 	{
+		Debug.Log("Base Success!");
 		var baseScript : BaseScript = baseClone.GetComponent(BaseScript);
 		baseScript.SetBaseType(baseType);
 		baseScript.SetPlayerType(player);

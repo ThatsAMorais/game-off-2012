@@ -6,23 +6,25 @@ var posMax : int = 10;
 var posMin : int = -10;
 var htMax : int = 12;
 var htMin : int = 4;
-var camOrigin : GameObject;
 
 public var currentSelection : GameObject; // hold Fire1-selected
 //private var originalColorOfSelected : Color;
 public var targetedSelection : GameObject; // hold Fire2-selected
 //private var originalColorOfTargeted : Color;
 public var mouseoverTarget : GameObject;
+private var origin : Vector3 = Vector3(0,0,0);
 
 function Start ()
 {
-	gameObject.Find("Main Camera").transform.position = camOrigin.transform.position;
+	gameObject.Find("Main Camera").transform.position = origin;
 	gameObject.Find("Main Camera").transform.position.y = camHeight;
 }
 
 function Update ()
 {
-	var camPos : Vector3 = gameObject.Find("Main Camera").transform.position;
+	//gameObject.Find("Main Camera").transform.position = camPos;
+
+	//camPos = gameObject.Find("Main Camera").transform.position;
 	
 	// Camera scrolling
 	camPos.y = Mathf.Clamp(camPos.y + Input.GetAxis("Mouse ScrollWheel"), htMin, htMax);
@@ -40,9 +42,15 @@ function Update ()
 	gameObject.Find("Main Camera").transform.position = camPos;
 }
 
+function GetCellScript(x,y)
+{
+	return GameObject.Find(String.Format("HexPlain/cell_{0}_{1}_", x, y)).GetComponent(CellScript);
+}
+
 function SetPosition(position : Vector2)
 {
-	camPos = Vector3(position.x, gameObject.transform.position.y, position.y);;
+	var cellRealPosition : Vector3 = GetCellScript(position.x, position.y).GetRealPosition();
+	camPos = Vector3(cellRealPosition.x, gameObject.transform.position.y, cellRealPosition.z);
 }
 
 function GetSelectedGUIRect() : Rect

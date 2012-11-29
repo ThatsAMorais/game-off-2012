@@ -2,7 +2,8 @@
 
 var branch : GameObject;
 
-private var branchCount : int = 4;
+private var MAX_BRANCHES : int = 4;
+private var branchCount : int = MAX_BRANCHES;
 private var world_position : Vector2 = Vector2(-1,-1);
 
 function Start ()
@@ -32,18 +33,24 @@ function GetPosition() : Vector2
 	return world_position;
 }
 
-function GetBranch(x : int, y : int) : GameObject
+function GetBranch() : GameObject
 {
 	var branch : GameObject = null;
 	
 	if(0 < branchCount)
 	{
 		var name : String = String.Format("branch_{0}", branchCount);
-		branchCount--;
 		branch = Instantiate(branch);
+		GameObject.Find(String.Format("{0}/Branch_00{1}", gameObject.name, branchCount)).renderer.enabled = false;
+		branchCount--;
 	}
 	
 	return branch;
+}
+
+function GrowBranche()
+{
+	//TODO: Would be a cool feature, but no time
 }
 
 function GetBranchCount()
