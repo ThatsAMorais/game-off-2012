@@ -460,31 +460,33 @@ function PositionValid(x : int, y : int) : boolean
 
 function GetNeighbor(neighbor : int) : Vector2
 {
-	var neighborPos : Vector2 = Vector2(-1,-1);
+	var neighborPos : Vector2 = Vector2(1,1);
+	
+	Debug.Log(neighbor);
 	
 	switch(neighbor)
 	{
-		case NEIGHBOR_AHEAD:
+		case NEIGHBOR_AHEAD_ANGLE:
 			if(PositionValid(myLocation.x+1, myLocation.y))
 				neighborPos =  Vector2(myLocation.x+1, myLocation.y);
 			break;
-		case NEIGHBOR_BEHIND:
+		case NEIGHBOR_BEHIND_ANGLE:
 			if(PositionValid(myLocation.x-1, myLocation.y))
 				neighborPos = Vector2(myLocation.x-1, myLocation.y);
 			break;
-		case NEIGHBOR_LEFT:
+		case NEIGHBOR_LEFT_ANGLE:
 			if(PositionValid(myLocation.x, myLocation.y-1))
 				neighborPos = Vector2(myLocation.x, myLocation.y-1);
 			break;
-		case NEIGHBOR_RIGHT:
+		case NEIGHBOR_RIGHT_ANGLE:
 			if(PositionValid(myLocation.x, myLocation.y+1))
 				neighborPos = Vector2(myLocation.x, myLocation.y+1);
 			break;
-		case NEIGHBOR_BACK_LEFT:
+		case NEIGHBOR_BACK_LEFT_ANGLE:
 			if(PositionValid(myLocation.x-1, myLocation.y-1))
 				neighborPos = Vector2(myLocation.x-1, myLocation.y-1);
 			break;
-		case NEIGHBOR_BACK_RIGHT:
+		case NEIGHBOR_BACK_RIGHT_ANGLE:
 			if(PositionValid(myLocation.x-1, myLocation.y+1))
 				neighborPos = Vector2(myLocation.x-1, myLocation.y+1);
 			break;
@@ -515,11 +517,22 @@ function SlotPos() : Vector2
 }
 
 // I broke this out because its reused a few times.
-function PositionInhabitant(new_inhabitant : GameObject, z : float)
+function PositionInhabitant(new_inhabitant : GameObject, current_position : Vector2, z : float)
 {
+	var position : Vector2 = current_position;	// time-sensitive laziness
+	
+	if(PositionValid(position.x, position.y))
+	{
+		// MoveFrom previous position
+		GameObject.Find(String.Format("/HexPlain/cell_{0}_{1}_", position.x, position.y)).GetComponent(CellScript).MoveFrom(new_inhabitant);
+	}
+	
 	//var z = new_inhabitant.localPosition.z;
 	new_inhabitant.transform.parent = gameObject.transform;
+	Debug.Log(new_inhabitant.transform.parent);
+	Debug.Log(gameObject.transform);
 	new_inhabitant.transform.localPosition = Vector3(SlotPos()[0], SlotPos()[1], z);
+	Debug.Log(String.Format("localPosition {0}, position {0}", new_inhabitant.transform.localPosition, new_inhabitant.transform.position));
 	inhabitant = new_inhabitant;
 	inhabitant_occupied = true;
 }
@@ -543,71 +556,36 @@ function SetInhabitant(new_inhabitant : GameObject) : boolean
 	{
 		if(new_inhabitant.name.Contains("forker") || new_inhabitant.name.Contains("brancher"))
 		{
-			position = new_inhabitant.GetComponent(UnitScript).GetPosition();
-		
-			if(PositionValid(position.x, position.y))
-			{
-				// MoveFrom previous position
-				GameObject.Find(String.Format("/HexPlain/cell_{0}_{1}_", position.x, position.y)).GetComponent(CellScript).MoveFrom(new_inhabitant);
-			}
-	
+			Debug.Log("Set Inhabitant: Unit");
 			// MoveTo this position
-			PositionInhabitant(new_inhabitant, 3.0);
-			
-			new_inhabitant.GetComponent(UnitScript).SetPosition(myLocation.x, myLocation.y);
+			PositionInhabitant(new_inhabitant, new_inhabitant.GetComponent(UnitScript).GetPosition(), 3.0);
+			new_inhabitant.GetComponent(UnitScript).SetPosition(myLocation.x, myLocation.y);	//script type dependent
 		}
 		else if(new_inhabitant.name.Contains("base"))
 		{	
-			Debug.Log("Positioning Base");
-			
-			position = new_inhabitant.GetComponent(BaseScript).GetPosition();
-		
-			if(PositionValid(position.x, position.y))
-			{
-				// MoveFrom previous position
-				GameObject.Find(String.Format("/HexPlain/cell_{0}_{1}_", position.x, position.y)).GetComponent(CellScript).MoveFrom(new_inhabitant);
-			}
-			
+			Debug.Log("Set Inhabitant: Base");
 			// MoveTo this position
-			PositionInhabitant(new_inhabitant, 3.0);
-			
+			PositionInhabitant(new_inhabitant, new_inhabitant.GetComponent(BaseScript).GetPosition(), 3.0);
 			new_inhabitant.GetComponent(BaseScript).SetPosition(myLocation.x, myLocation.y);
-			
-			Debug.Log("Base Positioned");
 		}
 		else if(new_inhabitant.name.Contains("bush"))
 		{
-			position = new_inhabitant.GetComponent(BushScript).GetPosition();
-		
-			if(PositionValid(position.x, position.y))
-			{
-				// MoveFrom previous position
-				GameObject.Find(String.Format("/HexPlain/cell_{0}_{1}_", position.x, position.y)).GetComponent(CellScript).MoveFrom(new_inhabitant);
-			}
-			
+			Debug.Log("Set Inhabitant: Bush");
 			// MoveTo this position
-			PositionInhabitant(new_inhabitant, 3.0);
-			
+			PositionInhabitant(new_inhabitant, new_inhabitant.GetComponent(BushScript).GetPosition(), 3.0);
 			new_inhabitant.GetComponent(BushScript).SetPosition(myLocation.x, myLocation.y);
 		}
 		else if(new_inhabitant.name.Contains("branch") || new_inhabitant.name.Contains("fork") || new_inhabitant.name.Contains("fortification"))
 		{
-			position = new_inhabitant.GetComponent(PickupScript).GetPosition();
-		
-			if(PositionValid(position.x, position.y))
-			{
-				// MoveFrom previous position
-				GameObject.Find(String.Format("/HexPlain/cell_{0}_{1}_", position.x, position.y)).GetComponent(CellScript).MoveFrom(new_inhabitant);
-			}
-			
+			Debug.Log("Set Inhabitant: Pickup");
 			// MoveTo this position
-			PositionInhabitant(new_inhabitant, 3.0);
-			
+			PositionInhabitant(new_inhabitant, new_inhabitant.GetComponent(PickupScript).GetPosition(), 3.0);
 			new_inhabitant.GetComponent(PickupScript).SetPosition(myLocation.x, myLocation.y);
 		}
 		else
 		{
-			return false;
+			Debug.Log("Setting Inhabitant Failed!");
+			result = false;
 		}
 	}
 	else
@@ -671,7 +649,6 @@ function CreateBase(name : String, player : boolean, baseType : String) : boolea
 	result = MoveTo(baseClone);
 	if(result)
 	{
-		Debug.Log("Base Success!");
 		var baseScript : BaseScript = baseClone.GetComponent(BaseScript);
 		baseScript.SetBaseType(baseType);
 		baseScript.SetPlayerType(player);

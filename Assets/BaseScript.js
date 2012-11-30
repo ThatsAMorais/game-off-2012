@@ -9,7 +9,7 @@ private var HEADING_RIGHT = -60;
 private var HEADING_BACK_RIGHT = -120;
 private var HEADING_BACK = 180;
 
-
+var MAX_UNITS_PER_TURN : int = 3;
 var MAX_UNITS_PER_BASE = 15;
 var CONSTRUCTION_TIME : float = 2;
 var MAX_BASE_HEALTH = 1024;
@@ -29,18 +29,29 @@ private var health : int = MAX_BASE_HEALTH;
 private var current_construction : String;
 private var construction_in_progress : boolean = false;
 private var construction_progress : float = 0;
-private var world_position : Vector2 = Vector2(-1,-1);
+private var world_position : Vector2 = Vector2(1,1);
+private var current_heading : int = HEADING_STRAIGHT;
 
-private var target_position : Vector2;
+private var target_position : Vector2 = new Vector2(28,27);
 private var previousPathHighlight : Vector2;
 private var selected : boolean = false;
-private var units : List.<GameObject> = List.<GameObject>();
+private var units : List.<GameObject> = new List.<GameObject>();
 
 private var MAX_BRANCHES : int = 4;
 private var FORK_DAMAGE = 0.3;
-private var branches : List.<GameObject> = List.<GameObject>();
+private var branches : List.<GameObject> = new List.<GameObject>();
 
+private var units_made_this_turn : int = 0;
 
+function ResetTurn()
+{
+	units_made_this_turn = 0;
+		
+	for(var u=0; u < units.Count; u++)
+	{
+		units[u].GetComponent(UnitScript).ResetTurn();
+	}
+}
 
 function OnDestroy()
 {
@@ -105,38 +116,44 @@ function DoSelected(deltaTime : float)
 	//TODO: Glow the Cell with the way-point
 }
 
+function RotateToHeading()
+{
+	gameObject.transform.localRotation = Quaternion.identity;
+	gameObject.transform.Rotate(new Vector3(0,0,GetHeading()));
+}
+
+function SetHeading(newHeading : int)
+{
+	current_heading = newHeading;
+	RotateToHeading();
+}
+
+function GetHeading() : int
+{
+	return current_heading;
+}
 
 function InitializeBase()
 {
 	// Clear variables
-	
-	// Set defaults
-	var rotation : int = 0;
-	
-	// Hack
-	if(15 > gameObject.transform.position.x)
-	{
-		rotation = -90;
-	}
-
-	gameObject.transform.Rotate(0,0,rotation);
 }
-
-
 
 function SetPosition(x : int, y : int)
 {
-	var heading : int = HEADING_LEFT;
+	var heading : int = HEADING_BACK_RIGHT;
 
 	world_position = Vector2(x,y);
 	
 	if(15 < world_position.x)
 	{
-		heading = HEADING_RIGHT;
+		heading = HEADING_LEFT;
 	}
 
-	unit_creation_waypoint = new Vector2(world_position.x + modifier_x, world_position.y + modifier_y);
-	SetTarget(world_position.x + modifier_x, world_position.y + modifier_y);
+	SetHeading(heading);
+
+	unit_creation_waypoint = GetCellScript(world_position.x, world_position.y).GetNeighbor(heading);
+	
+	SetTarget(unit_creation_waypoint.x, unit_creation_waypoint.y);
 }
 
 function GetPosition() : Vector2
@@ -193,14 +210,29 @@ function GetForkerCount() : int
 	return forkerCount;
 }
 
+function GetForkerAliveCount() : int
+{
+	return number_of_forkers_alive;
+}
+
 function GetBrancherCount() : int
 {
 	return brancherCount;
 }
 
+function GetBrancherAliveCount() : int
+{
+	return number_of_branchers_alive;
+}
+
 function GetHealth() : int
 {
 	return health;
+}
+
+function GetActionPoints() : int
+{
+	return MAX_UNITS_PER_TURN - units_made_this_turn;
 }
 
 function SetPlayerType(isPlayer : boolean)
@@ -221,6 +253,7 @@ function SetBaseColor(color : Color)
 
 function GetCellScript(x : int, y : int) : CellScript
 {
+	Debug.Log(Vector2(x,y));
 	return GameObject.Find(String.Format("HexPlain/cell_{0}_{1}_", x, y)).GetComponent(CellScript);
 }
 
@@ -238,6 +271,19 @@ function TakeBranches(branchesGiven : List.<GameObject>)
 	return branches_taken;
 }
 
+function GetBranch() : GameObject
+{
+	var branch : GameObject;
+	
+	if(0 < branches.Count)
+	{
+		branch = branches[0];
+		branches.RemoveAt(0);
+	}
+	
+	return branch;
+}
+
 function TakeDamage(damage : float)
 {
 	health -= damage;
@@ -249,74 +295,28 @@ function Forked()
 	TakeDamage(FORK_DAMAGE);
 }
 
-
-function MoveTo(piece : GameObject, x : int, y : int)
+function DirectUnit(index : int, position : Vector2)
 {
-	GetCellScript(x,y).MoveTo(piece);
+	units[index].GetComponent(UnitScript).SetTarget(position.x, position.y);
 }
 
-function PlaceUnit(unit : GameObject, x : int, y : int) : boolean
+function MoveTo(piece : GameObject, x : int, y : int) : boolean
+{
+	Debug.Log(Vector2(x,y));
+	return GetCellScript(x,y).MoveTo(piece);
+}
+
+function PlaceUnit(unit : GameObject) : boolean
 {
 	var result : boolean = true;
+	var position : Vector2 = GetPosition();
+	var placementPos : Vector2 = GetCellScript(position.x, position.y).GetNeighbor(GetHeading());
 	
-	while(!MoveTo(forkerClone, placementPos.x, placementPos.y))
-	{
-		placementPos = GetCellScript(world_position.x, world_position.y).GetNeighbor();
-		
-		if(placementPos.x == x && placementPos.y == y)
-		{
-			Debug.Log("Failed to place Forker");
-			result = false;
-			break;
-		}
-	}
+	Debug.Log(String.Format("PlaceUnit {0}", placementPos));
 	
+	unit.GetComponent(UnitScript).MoveSelf(placementPos.x, placementPos.y);
+
 	return result;
-}
-
-function SetupUnit(unit : GameObject)
-{
-	if(unit)
-	{	
-		var unitScript : UnitScript = unit.GetComponent(UnitScript);
-		unitScript.SetTeam(player);
-		unitScript.SetHomeBase(gameObject);
-		unitScript.SetTarget(GetTarget().x, GetTarget().y);
-		unitScript.SetPosition(position.x, position.y);
-	}
-}
-
-function CreateForker(x : int, y : int, name : String) : GameObject
-{
-	var forkerClone : GameObject = Instantiate(forker).gameObject;
-	forkerClone.name = name;
-	var placementPos : Vector2 = new Vector2(x,y);
-	
-	if(PlaceUnit(forkerClone, x, y))
-	{
-		forkerCount++;
-		number_of_forkers_alive++;
-		
-		SetupUnit(forkerClone);				
-		AddUnit(newUnit);
-	}
-	
-	return forkerClone;
-}
-
-function CreateBrancher(x : int, y : int, name : String) : GameObject
-{
-	var brancherClone : GameObject = Instantiate(brancher).gameObject;
-	brancherClone.name = name;
-	
-	if(PlaceUnit(forkerClone, x, y))
-	{
-		MoveTo(brancherClone, x, y);
-	
-	brancherCount++;
-	number_of_branchers_alive++;
-	
-	return brancherClone;
 }
 
 function FormatUnitName(unit : String) : String
@@ -341,16 +341,39 @@ function CreateUnit(unit : String)
 {
 	var name : String = FormatUnitName(unit);
 	var newUnit : GameObject;
-	var position : Vector2 = GetPosition();
+	var unitScript : UnitScript;
 	
-	switch(unit)
+	if(MAX_UNITS_PER_TURN > units_made_this_turn)
 	{
-		case "forker":
-			newUnit = CreateForker(unit_creation_waypoint.x, unit_creation_waypoint.y, name);
-			break;
-		case "brancher":
-			newUnit = CreateBrancher(unit_creation_waypoint.x, unit_creation_waypoint.y, name);
-			break;
+		switch(unit)
+		{
+			case "forker":
+				newUnit = Instantiate(forker).gameObject;
+				forkerCount++;
+				number_of_forkers_alive++;
+				break;
+			case "brancher":
+				newUnit = Instantiate(brancher).gameObject;
+				brancherCount++;
+				number_of_branchers_alive++;
+				break;
+		}
+		
+		// Must do first
+		newUnit.name = name;
+	
+		if(PlaceUnit(newUnit))
+		{
+			
+			unitScript = newUnit.GetComponent(UnitScript);
+			unitScript.SetTeam(IsPlayer());
+			unitScript.SetHomeBase(gameObject);
+			unitScript.SetTarget(GetTarget().x, GetTarget().y);
+			
+			AddUnit(newUnit);
+		}
+		
+		units_made_this_turn++;
 	}
 }
 
@@ -385,7 +408,7 @@ function ClearCurrentConstruction()
 
 function StepConstruction(deltaTime : float)
 {
-	construction_progress += deltaTime;
+	construction_progress = CONSTRUCTION_TIME; // DISABLING this
 	
 	if(construction_progress >= CONSTRUCTION_TIME)
 	{
@@ -464,6 +487,7 @@ function DoStatsGUI()
 	var bType = ("both" == GetBaseType() ? "forker" : GetBaseType());
 	
 	GUILayout.TextField(String.Format("Health: {0}", (GetHealth()/MAX_BASE_HEALTH)*100));
+	GUILayout.TextField(String.Format("Action Points: {0}", GetActionPoints()));
 	
 	for(var i = ("both" == GetBaseType() ? 2 : 1); i > 0; i--)
 	{

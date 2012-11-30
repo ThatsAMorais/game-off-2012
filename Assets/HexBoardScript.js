@@ -8,6 +8,12 @@ var groundTexture2 : Texture2D;
 var playerType = PLAYER_TYPE_BOTH;
 var guiBG_default : Texture;
 
+var playerPos : Vector2 = Vector2(28,28);
+var opponentPos : Vector2 = Vector2(3,3);
+
+var MAX_UNITS_PER_TURN : int = 3;
+var MAX_UNITS_PER_BASE = 21;
+
 // "constants"
 private var lo_index : int = 0;
 private var hi_index : int = 32;
@@ -51,7 +57,14 @@ function Update ()
 {
 	if(Input.GetKeyDown(UnityEngine.KeyCode.Escape))
 	{
-		ToggleEscapeMenu();
+		if(gameState == GAME_STATE)
+		{
+			ToggleEscapeMenu();
+		}
+		else if(gameState == SETUP_STATE)
+		{
+			Application.LoadLevel("init_scene");
+		}
 	}
 	
 	if(!player_turn)
@@ -97,23 +110,18 @@ function EndTurn()
 	if(player_turn)
 	{
 		current_round--;
-		resetPlayerturn();
+		resetTurn("player_base");
 	}
 	else
 	{
-		resetOpponentTurn();
+		opponent_ai_action_delay = 0;
+		resetTurn("opponent_base");
 	}
 }
 
-function resetOpponentTurn()
+function resetTurn(base : String)
 {
-	opponent_ai_action_delay = AI_ACTION_DELAY;
-	opponent_action_points = NUMBER_OF_ACTION_POINTS;
-}
-
-function resetPlayerturn()
-{
-	player_action_points = NUMBER_OF_ACTION_POINTS;
+	GameObject.Find(base).GetComponent(BaseScript).ResetTurn();
 }
 
 function DoOpponentTurn(deltaTime : float)
@@ -126,12 +134,60 @@ function DoOpponentTurn(deltaTime : float)
 	// if(forkers)
 	//  - travel diagonally to locate the player's base and fortifications
 	
-	// For now, just a short delay
-	opponent_ai_action_delay -= deltaTime;
-	if(0 >= opponent_ai_action_delay)
+	var base : GameObject = GameObject.Find("opponent_base");
+	var baseScript : BaseScript = base.GetComponent(BaseScript);
+	var baseType : String = baseScript.GetBaseType();
+	var forkersAlive : int = baseScript.GetForkerAliveCount();
+	var branchersAlive : int = baseScript.GetBrancherAliveCount();
+	var unitTotal : int;
+	
+	var target : Vector2 = new Vector2(Random.Range(8,24),Random.Range(8,24));
+	
+	if(baseScript.GetActionPoints())
+	{
+		if(4.0 <= opponent_ai_action_delay)
+		{
+			if(MAX_UNITS_PER_BASE > (forkersAlive + branchersAlive))
+			{
+				if(baseType == "both")
+				{
+					if(forkersAlive <= branchersAlive)
+					{
+						baseScript.CreateUnit("forker");
+					}
+					else
+					{
+						baseScript.CreateUnit("brancher");
+					}
+					
+					unitTotal = forkersAlive + branchersAlive;
+				}
+				else if(baseType == "forker")
+				{
+					baseScript.CreateUnit("forker");
+					unitTotal = forkersAlive;
+				}
+				else if(baseType == "brancher")
+				{
+					baseScript.CreateUnit("brancher");
+					unitTotal = branchersAlive;
+				}
+			}
+			
+			// Redirect a random unit to a random cell
+			baseScript.DirectUnit(Random.Range(0,unitTotal), new Vector2(Random.Range(8,24),Random.Range(8,24)));
+			
+			opponent_ai_action_delay = 0;
+		}
+		
+		opponent_ai_action_delay += deltaTime;
+	}
+	else
 	{
 		EndTurn();
 	}
+	
+	
 }
 
 function GetCamControl() : CamControl
@@ -265,11 +321,11 @@ function DoGameboardGUI()
 	GUILayout.BeginHorizontal();
 
 	// Left
-	/*
+	
 	GUILayout.BeginVertical();
-	GUILayout.Space(Screen.width*40);
+	GUILayout.TextArea("Controls:\n - Shift+Hold : Enabled Camera Movement\n - Left-Click : Selects Units and Buildings\n - Right-Click : Trigger");
 	GUILayout.EndVertical();
-	*/
+	
 	GUILayout.FlexibleSpace();
 	
 	// Middle
@@ -415,9 +471,6 @@ function CreateGameboard()
 {
 	var tex : Texture2D = null;
 
-	var playerPos : Vector2 = Vector2(3,3);
-	var opponentPos : Vector2 = Vector2(28,28);
-
 	switch(playerType)
 	{
 		case PLAYER_TYPE_FORKER:
@@ -461,7 +514,7 @@ function CreateGameboard()
 			gameObject.Find(String.Format("/HexPlain/cell_{0}_{1}_", x, y)).renderer.material.mainTexture = tex;
 			
 			// Place bushes
-			if((bushesPlaced < init_number_of_bushes) && (2 == Random.Range(1,20)))
+			if((bushesPlaced < init_number_of_bushes) && (2 == Random.Range(1,16)))
 			{
 				CreateBush(x, y);
 			}

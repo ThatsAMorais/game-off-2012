@@ -8,7 +8,7 @@ private var initState = INIT_MENU;
 var BUTTON_W = 300;
 var BUTTON_H = 200;
 var BUTTONS_PER_ROW : int = 1;
-
+var TitleTextStyle : GUIStyle = new GUIStyle();
 
 function Start ()
 {
@@ -35,28 +35,26 @@ function OnGUI()
 
 function DoInitGUI()
 {
-	GUI.backgroundColor = Color.black;
-	GUI.color = Color.green;
-
 	var selectionStrings : String[] = ["Start a Battle", "Credits"];
 	var selectionGridInt : int = 99;
-
-	selectionGridInt = GUI.SelectionGrid(Rect((Screen.width/2 - (BUTTON_W/2)),
-											  (Screen.height/2 - (((selectionStrings.Length/BUTTONS_PER_ROW)*BUTTON_H)/2)),
-											  BUTTON_W, BUTTON_H),
-											  selectionGridInt, selectionStrings, BUTTONS_PER_ROW);
+	
+	GUILayout.BeginArea(Rect(Screen.width * 0.25, Screen.height * 0.25, Screen.width*0.7, Screen.height*0.7));
+	GUILayout.TextField("Forks - V - Branches", TitleTextStyle);
+	
+	//GUI.backgroundColor = Color.black;
+	//GUI.color = Color.green;
+	
+	selectionGridInt = GUILayout.SelectionGrid(selectionGridInt, selectionStrings, BUTTONS_PER_ROW);
 	switch(selectionGridInt)
 	{
 		case 0:
-			Debug.Log("Start a Battle");
 			Application.LoadLevel("game_scene");
 			break;
 		case 1:
-			Debug.Log("Credits");
-			break;
-		default:
 			break;
 	}
+	
+	GUILayout.EndArea();
 }
 
 function CreateInitScene()

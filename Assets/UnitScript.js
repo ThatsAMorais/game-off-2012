@@ -55,6 +55,12 @@ private var FORK_DAMAGE = 0.3;
 // Animate variables
 private var newly_created_rotation = 0;
 
+function ResetTurn()
+{
+	action_points = ACTION_POINTS_PER_TURN;
+	time_since_last_move = 1.0;
+}
+
 function OnDestroy()
 {
 	DropItems();
@@ -78,6 +84,12 @@ function Start ()
 
 function Update ()
 {
+	// Don't run this logic until the piece is setup
+	if(GetPosition().x == -1 || GetPosition().y == -1)
+	{
+		return;
+	}
+	
 	if(health <= 0)
 	{
 		// Game Over, man!
@@ -291,12 +303,29 @@ function TakeBranches(branchesGiven : List.<GameObject>)
 	return branches_taken;
 }
 
-function PickBranch(bush : GameObject)
+function PickBranch(piece : GameObject)
 {
+	var branch : GameObject;
 	// Cannot take a branch if carrying a weapon
 	if(4 > branches.Count && null == in_hand)
 	{
-		branches.Add(bush.GetComponent(BushScript).GetBranch());
+		if(piece.name.Contains("bush"))
+		{
+			branch = piece.GetComponent(BushScript).GetBranch();
+			if(branch)
+				branches.Add(branch);
+		}
+		else if(piece.name.Contains("base"))
+		{
+			branch = piece.GetComponent(BaseScript).GetBranch();
+			if(branch)
+				branches.Add(branch);
+		}
+		
+		if(branch)
+		{
+			branch.transform.localPosition = new Vector3(0, -1, branch_pos[0]);
+		}
 	}
 }
 
@@ -331,7 +360,7 @@ function Push(unit : GameObject, heading : int)
 	if(push_success)
 	{
 		// If successful, move to the location that was pushed
-		GetCellScript(nextCellPos.x, nextCellPos.y).MoveTo(gameObject);
+		MoveTo(gameObject, nextCellPos.x, nextCellPos.y);
 		UseActionPoints(1);
 	}
 }
@@ -339,7 +368,7 @@ function Push(unit : GameObject, heading : int)
 function Pushed(heading : int) : boolean
 {
 	var nextCellPos : Vector2 = GetNeighbor(heading);
-	return GetCellScript(nextCellPos.x, nextCellPos.y).MoveTo(gameObject);
+	return MoveTo(gameObject, nextCellPos.x, nextCellPos.y);
 }
 
 function Pickup(pickup : GameObject)
@@ -404,7 +433,7 @@ function MoveTowardHeading()
 	
 	if(has_target)
 	{
-		if(false == GetCellScript(nextCellPos.x, nextCellPos.y).MoveTo(gameObject))
+		if(false == MoveSelf(nextCellPos.x, nextCellPos.y))
 		{
 			Debug.Log("Failed to move to nextCellPos");
 		}
@@ -413,6 +442,16 @@ function MoveTowardHeading()
 			UseActionPoints(1);
 		}
 	}
+}
+
+function MoveSelf(x : int, y : int) : boolean
+{
+	return MoveTo(gameObject, x, y);
+}
+
+function MoveTo(object : GameObject, x : int, y : int) : boolean
+{
+	return GetCellScript(x, y).MoveTo(object);
 }
 
 
@@ -490,6 +529,8 @@ function SetPosition(x : int, y : int)
 {
 	Debug.Log(String.Format("SetPosition ({0},{1})", x, y));
 	world_position = Vector2(x,y);
+	gameObject.transform.localPosition.z += 0.3;
+	//gameObject.transform.localRotation = Quaternion.identity;
 	RotateToHeading();
 }
 
@@ -627,7 +668,7 @@ function GetCellScript(x : int, y : int) : CellScript
 	}
 	else
 	{
-		Debug.Log(String.Format("Error: {0}", Vector2(x,y)));
+		//Debug.Log(String.Format("Error: {0}", Vector2(x,y)));
 	}
 	
 	return null;
@@ -639,8 +680,9 @@ function GetNeighbor(direction : int) : Vector2
 	neighborDir = ((neighborDir-180)%360) + (neighborDir < 180 ? 180 : -180);
 	neighborDir = (neighborDir == -180) ? 180 : neighborDir;
 	Debug.Log(neighborDir);
+	Debug.Log(GetPosition());
 	
-	var neighborPos : Vector2 = GetCellScript(world_position.x, world_position.y).GetNeighbor(neighborDir);
+	var neighborPos : Vector2 = GetCellScript(GetPosition().x, GetPosition().y).GetNeighbor(neighborDir);
 	return neighborPos;
 }
 
@@ -664,7 +706,7 @@ function TossItem(item : GameObject) : boolean
 	var current_heading : int = HEADING_BACK;
 	var neighbor = GetNeighbor(current_heading);
 
-	while(false == GetCellScript(neighbor.x, neighbor.y).MoveTo(item))
+	while(false == MoveTo(item, neighbor.x, neighbor.y))
 	{
 		current_heading += HEADING_RIGHT;
 		
@@ -697,8 +739,8 @@ function GraspItem(item : GameObject)
 	}
 	else if(item.name.Contains(FORTIFICATION))
 	{
-		item.transform.localPosition = Vector3(-1,1,0);
-		item.transform.localScale = Vector3(0.3,0.3,0.2);
+		item.transform.localPosition = Vector3(1,0,0);
+		//item.transform.localScale = Vector3(,0.3,0.2);
 	}
 	
 	item.GetComponent(PickupScript).SetPosition(GetPosition().x, GetPosition().y);
@@ -831,6 +873,7 @@ function DoStatsGUI()
 	GUILayout.TextField(String.Format("Unit : {0} ({1})", GetUnitType(), isPlayer ? "Ally" : "Enemy"));
 	GUILayout.TextField(String.Format("Health: {0}", (GetHealth()/MAX_UNIT_HEALTH)*100));
 	GUILayout.TextField(String.Format("Branches: {0}", branches.Count));
+	GUILayout.TextField(String.Format("Action Points: {0}", GetActionPoints()));
 	GUILayout.TextField(String.Format("Number of {0}s made : {1}",
 									 GetUnitType() == FORKER ? FORK : FORTIFICATION,
 									 GetUnitType() == FORKER ? GetForkCount() : GetFortificationCount()));

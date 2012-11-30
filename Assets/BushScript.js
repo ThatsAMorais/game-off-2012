@@ -35,7 +35,7 @@ function GetPosition() : Vector2
 
 function GetBranch() : GameObject
 {
-	var branch : GameObject = null;
+	var branch : GameObject;
 	
 	if(0 < branchCount)
 	{

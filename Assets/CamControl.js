@@ -30,7 +30,7 @@ function Update ()
 	camPos.y = Mathf.Clamp(camPos.y + Input.GetAxis("Mouse ScrollWheel"), htMin, htMax);
 	gameObject.Find("Point light").light.intensity = camPos.y*0.2;
 	
-	if(Input.GetKey(KeyCode.LeftShift))
+	if(Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift))
 	{
 		/* Camera movement */
     	camPos.x = Mathf.Clamp(camPos.x + Input.GetAxis("Mouse X"), posMin, posMax);
