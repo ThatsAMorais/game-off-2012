@@ -343,7 +343,7 @@ function CreateUnit(unit : String)
 	var newUnit : GameObject;
 	var unitScript : UnitScript;
 	
-	if(MAX_UNITS_PER_TURN > units_made_this_turn)
+	if(MAX_UNITS_PER_TURN != units_made_this_turn)
 	{
 		switch(unit)
 		{
@@ -408,7 +408,7 @@ function ClearCurrentConstruction()
 
 function StepConstruction(deltaTime : float)
 {
-	construction_progress = CONSTRUCTION_TIME; // DISABLING this
+	construction_progress = 0; // DISABLING this
 	
 	if(construction_progress >= CONSTRUCTION_TIME)
 	{

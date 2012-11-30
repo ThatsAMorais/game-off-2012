@@ -38,7 +38,7 @@ function DoInitGUI()
 	var selectionStrings : String[] = ["Start a Battle", "Credits"];
 	var selectionGridInt : int = 99;
 	
-	GUILayout.BeginArea(Rect(Screen.width * 0.25, Screen.height * 0.25, Screen.width*0.7, Screen.height*0.7));
+	GUILayout.BeginArea(Rect(Screen.width * 0.2, Screen.height * 0.2, Screen.width*0.6, Screen.height*0.6));
 	GUILayout.TextField("Forks - V - Branches", TitleTextStyle);
 	
 	//GUI.backgroundColor = Color.black;

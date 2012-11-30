@@ -276,7 +276,7 @@ function DoSetupGUI()
 	GUI.backgroundColor = Color.black;
 	GUI.color = Color.green;
 
-	GUILayout.BeginArea(Rect(Screen.width*0.25, Screen.height*0.2, Screen.width*0.5, Screen.height*0.5));
+	GUILayout.BeginArea(Rect(Screen.width*0.25, Screen.height*0.25, Screen.width*0.5, Screen.height*0.5));
 
 	switch(setupStep)
 	{
