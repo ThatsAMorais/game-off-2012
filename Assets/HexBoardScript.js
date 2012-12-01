@@ -323,7 +323,7 @@ function DoGameboardGUI()
 	// Left
 	
 	GUILayout.BeginVertical();
-	GUILayout.TextArea("Controls:\n - Shift+Hold : Enabled Camera Movement\n - Left-Click : Selects Units and Buildings\n - Right-Click : Trigger");
+	GUILayout.TextArea("Controls:\n -Zoom : MouseWheel\n -Shift+Hold : Enables Cam Mvmt\n -Left-Click : Selects Units and Bases\n -Right-Click : Trigger");
 	GUILayout.EndVertical();
 	
 	GUILayout.FlexibleSpace();

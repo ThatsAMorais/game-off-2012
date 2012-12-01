@@ -114,10 +114,13 @@ function Update ()
 	
 	if(has_target && 0 < GetActionPoints())
 	{
-		if(time_since_last_move >= 0.5)
-		{	
+		//if(time_since_last_move >= 2.0)
+		if(true)
+		{
 			// Get the neighbor in the direction we are facing (which is the direction of our target)		
 			var nextCellPos : Vector2 = GetNeighbor(GetHeading());
+		
+			Debug.Log(String.Format("{0}:has_target : target({1})", DebugLogLeadString(), GetCellScript(nextCellPos.x,nextCellPos.y).GetInhabitant()));
 			
 			if(GetCellScript(nextCellPos.x, nextCellPos.y).SlotInhabited())
 			{
@@ -212,15 +215,22 @@ function Update ()
 				{
 					// Look toward the target
 					SetHeadingTowardPosition(GetTarget());
-					time_since_last_move = 0;
+					time_since_last_move = 1.0;
 				}
 			}
+			
+			time_since_last_move = 0;
 		}
 		else
 		{
 			time_since_last_move += Time.deltaTime;
 		}
 	}
+}
+
+function DebugLogLeadString() : String
+{
+	return String.Format("UnitScript({0})", gameObject.name);
 }
 
 function TakeDamage(damage : float)
@@ -233,6 +243,8 @@ function TakeDamage(damage : float)
 	{
 		health -= damage;
 	}
+	
+	Debug.Log(String.Format("{0}:TakeDamage() damage{1}", DebugLogLeadString(), damage));
 }
 
 function DropItems()
@@ -246,6 +258,8 @@ function DropItems()
 	{
 		DropBranch(MAX_BRANCHES);
 	}
+	
+	Debug.Log(String.Format("{0}:DropItems()", DebugLogLeadString()));
 }
 
 function DropItem()
@@ -259,6 +273,8 @@ function DropItem()
 	{	
 		DropBranch(1);
 	}
+	
+	Debug.Log(String.Format("{0}:DropItem()", DebugLogLeadString()));
 }
 
 function DropBranch(numBranches : int)
@@ -268,6 +284,8 @@ function DropBranch(numBranches : int)
 		TossItem(branches[0]);
 		branches.RemoveAt(0);
 	}
+	
+	Debug.Log(String.Format("{0}:DropBranch()", DebugLogLeadString()));
 }
 
 function GiveBranches(piece : GameObject, numBranches : int)
@@ -288,6 +306,8 @@ function GiveBranches(piece : GameObject, numBranches : int)
 	{
 		branches.RemoveAt(0);
 	}
+	
+	Debug.Log(String.Format("{0}:GiveBranches()", DebugLogLeadString()));
 }
 
 function TakeBranches(branchesGiven : List.<GameObject>)
@@ -299,6 +319,8 @@ function TakeBranches(branchesGiven : List.<GameObject>)
 		branches.Add(branchesGiven[branches_taken]);
 		branches_taken++;
 	}
+	
+	Debug.Log(String.Format("{0}:TakeBranches()", DebugLogLeadString()));
 	
 	return branches_taken;
 }
@@ -327,6 +349,8 @@ function PickBranch(piece : GameObject)
 			branch.transform.localPosition = new Vector3(0, -1, branch_pos[0]);
 		}
 	}
+	
+	Debug.Log(String.Format("{0}:PickBranch()", DebugLogLeadString()));
 }
 
 function Fork(piece : GameObject)
@@ -342,12 +366,16 @@ function Fork(piece : GameObject)
 	
 	// Get the cell of the targeted Cell
 	UseActionPoints(1);
+	
+	Debug.Log(String.Format("{0}:Fork()", DebugLogLeadString()));
 }
 
 function Forked()
 {
 	// Take Damage
 	TakeDamage(FORK_DAMAGE);
+	
+	Debug.Log(String.Format("{0}:Forked()", DebugLogLeadString()));
 }
 
 function Push(unit : GameObject, heading : int)
@@ -363,11 +391,14 @@ function Push(unit : GameObject, heading : int)
 		MoveTo(gameObject, nextCellPos.x, nextCellPos.y);
 		UseActionPoints(1);
 	}
+	
+	Debug.Log(String.Format("{0}:Push()", DebugLogLeadString()));
 }
 
 function Pushed(heading : int) : boolean
 {
 	var nextCellPos : Vector2 = GetNeighbor(heading);
+	Debug.Log(String.Format("{0}:Pushed()", DebugLogLeadString()));
 	return MoveTo(gameObject, nextCellPos.x, nextCellPos.y);
 }
 
@@ -384,6 +415,8 @@ function Pickup(pickup : GameObject)
 	{
 		branches.Add(pickup);
 	}
+	
+	Debug.Log(String.Format("{0}:Pickup()", DebugLogLeadString()));
 }
 
 function MoveTowardHeading()
@@ -442,6 +475,8 @@ function MoveTowardHeading()
 			UseActionPoints(1);
 		}
 	}
+	
+	Debug.Log(String.Format("{0}:MoveTowardHeading()", DebugLogLeadString()));
 }
 
 function MoveSelf(x : int, y : int) : boolean
@@ -453,7 +488,6 @@ function MoveTo(object : GameObject, x : int, y : int) : boolean
 {
 	return GetCellScript(x, y).MoveTo(object);
 }
-
 
 /*
 function FindPathToPosition(targetPos : Vector2)
@@ -476,7 +510,7 @@ function GetActionPoints() : int
 }
 
 function UseActionPoints(ap_used : int)
-{
+{	
 	action_points -= ap_used;
 }
 
@@ -528,6 +562,8 @@ function MouseoverTarget(position : Vector2)
 function SetPosition(x : int, y : int)
 {
 	Debug.Log(String.Format("SetPosition ({0},{1})", x, y));
+	Debug.Log(String.Format("Setting position of {0}, to {1}.", gameObject.name, new Vector2(x,y)));
+	
 	world_position = Vector2(x,y);
 	gameObject.transform.localPosition.z += 0.3;
 	//gameObject.transform.localRotation = Quaternion.identity;
@@ -674,13 +710,57 @@ function GetCellScript(x : int, y : int) : CellScript
 	return null;
 }
 
+function GetBehindNeighbor()
+{
+}
+
 function GetNeighbor(direction : int) : Vector2
 {
-	var neighborDir = (heading + direction);
+	var neighborDir = GetHeading(); // default to HEADING_STRAIGHT
+	/*
 	neighborDir = ((neighborDir-180)%360) + (neighborDir < 180 ? 180 : -180);
 	neighborDir = (neighborDir == -180) ? 180 : neighborDir;
-	Debug.Log(neighborDir);
-	Debug.Log(GetPosition());
+	*/
+	
+	switch(direction)
+	{
+		case HEADING_BACK:
+			neighborDir *= -1;
+			if(-180 == neighborDir)
+				neighborDir = 0;
+			else if(0 == neighborDir)
+				neighborDir = 180;
+			break;
+			
+		case HEADING_LEFT:
+			neighborDir += 60;
+			if(180 < neighborDir)
+				neighborDir = -120;
+			break;
+			
+		case HEADING_RIGHT:
+			neighborDir -= 60;
+			if(-120 > neighborDir)
+				neighborDir = 180;
+			break;
+			
+		case HEADING_BACK_LEFT:
+			neighborDir += 120;
+			if(300 == neighborDir)
+				neighborDir = -60;
+			if(240 == neighborDir)
+				neighborDir = -120;
+			break;
+			
+		case HEADING_BACK_RIGHT:
+			neighborDir -= 120;
+			if(-240 == neighborDir)
+				neighborDir = 120;
+			if(-180 == neighborDir)
+				neighborDir = 180;
+			break;
+	}
+	
 	
 	var neighborPos : Vector2 = GetCellScript(GetPosition().x, GetPosition().y).GetNeighbor(neighborDir);
 	return neighborPos;

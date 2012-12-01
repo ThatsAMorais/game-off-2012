@@ -7,25 +7,27 @@ var posMin : int = -10;
 var htMax : int = 12;
 var htMin : int = 4;
 
-public var currentSelection : GameObject; // hold Fire1-selected
+var selectedGUITexture : GUITexture;
+
+private var currentSelection : GameObject; // hold Fire1-selected
 //private var originalColorOfSelected : Color;
-public var targetedSelection : GameObject; // hold Fire2-selected
+private var targetedSelection : GameObject; // hold Fire2-selected
 //private var originalColorOfTargeted : Color;
-public var mouseoverTarget : GameObject;
+private var mouseoverTarget : GameObject;
 private var origin : Vector3 = Vector3(0,0,0);
+
+
 
 function Start ()
 {
 	gameObject.Find("Main Camera").transform.position = origin;
 	gameObject.Find("Main Camera").transform.position.y = camHeight;
+	
+	selectedGUITexture.pixelInset = GetSelectedGUIRect();
 }
 
 function Update ()
 {
-	//gameObject.Find("Main Camera").transform.position = camPos;
-
-	//camPos = gameObject.Find("Main Camera").transform.position;
-	
 	// Camera scrolling
 	camPos.y = Mathf.Clamp(camPos.y + Input.GetAxis("Mouse ScrollWheel"), htMin, htMax);
 	gameObject.Find("Point light").light.intensity = camPos.y*0.2;
@@ -37,7 +39,10 @@ function Update ()
     	camPos.z = Mathf.Clamp(camPos.z + Input.GetAxis("Mouse Y"), posMin, posMax);
 	}
 	
-	DoMousePicking();
+	if(!selectedGUITexture.HitTest(Input.mousePosition, Camera.main))
+	{
+		DoMousePicking();
+	}
 	
 	gameObject.Find("Main Camera").transform.position = camPos;
 }
@@ -50,12 +55,12 @@ function GetCellScript(x,y)
 function SetPosition(position : Vector2)
 {
 	var cellRealPosition : Vector3 = GetCellScript(position.x, position.y).GetRealPosition();
-	camPos = Vector3(cellRealPosition.x, gameObject.transform.position.y, cellRealPosition.z);
+	camPos = new Vector3(cellRealPosition.x, gameObject.transform.position.y, cellRealPosition.z);
 }
 
 function GetSelectedGUIRect() : Rect
 {
-	return Rect(Screen.width*0.65, Screen.height*0.7, Screen.width*0.35, Screen.height*0.3);
+	return new Rect(Screen.width*0.65, Screen.height*0.6, Screen.width*0.35, Screen.height*0.4);
 }
 
 function OnGUI()

@@ -102,11 +102,7 @@ function SetupParticleSystem()
 
 function Update ()
 {
-	if(mouseoverHighlightOn)
-	{
-		DoMouseoverHighlight();
-	}
-	else if(pathHighlightOn)
+	if(pathHighlightOn)
 	{
 		DoPathHighlight();
 	}
@@ -118,6 +114,10 @@ function Update ()
 	{
 		DoTargetedHighlight();
 	}
+	else if(mouseoverHighlightOn)
+	{
+		DoMouseoverHighlight();
+	}
 	else
 	{
 		ToggleParticleSystem(false);
@@ -127,7 +127,9 @@ function Update ()
 function OnGUI()
 {
 	if(mouseoverHighlightOn)
+	{
 		DoMouseoverGUI();
+	}
 }
 
 function GetPosition() : Vector2
@@ -159,7 +161,6 @@ function OnMouseExit()
 	mouseoverHighlightMod = 0.5;
 }
 
-
 function Target(x : int, y : int)
 {
 	var piece : GameObject = GetInhabitant();
@@ -176,6 +177,8 @@ function Target(x : int, y : int)
 			{
 				piece.GetComponent(BaseScript).SetTarget(x,y);
 			}
+			
+			GameObject.Find(String.Format("/HexPlain/cell_{0}_{1}_", x, y)).GetComponent(CellScript).Targeted(true);
 		}
 	}
 }
@@ -422,7 +425,7 @@ function FadeColor(color : Color, mod : float, speed : int) : float
 
 function DoMouseoverHighlight()
 {
-	mouseoverHighlightMod = FadeColor(mouseoverHighlightColor, mouseoverHighlightMod, 5);
+	//mouseoverHighlightMod = FadeColor(mouseoverHighlightColor, mouseoverHighlightMod, 5);
 }
 
 function DoTargetedHighlight()
@@ -458,11 +461,15 @@ function PositionValid(x : int, y : int) : boolean
 	return true;
 }
 
+function StatsString() : String
+{
+	return String.Format("Cell{0} : Inhabitant {1}", GetPosition(), GetInhabitant());
+}
+
 function GetNeighbor(neighbor : int) : Vector2
 {
 	var neighborPos : Vector2 = Vector2(1,1);
-	
-	Debug.Log(neighbor);
+	var mod : int = 0;
 	
 	switch(neighbor)
 	{
@@ -475,22 +482,40 @@ function GetNeighbor(neighbor : int) : Vector2
 				neighborPos = Vector2(myLocation.x-1, myLocation.y);
 			break;
 		case NEIGHBOR_LEFT_ANGLE:
-			if(PositionValid(myLocation.x, myLocation.y-1))
+			if(0 != (myLocation.y % 2))
+			{
+				mod = 1;
+			}
+			if(PositionValid(myLocation.x + mod, myLocation.y-1))
 				neighborPos = Vector2(myLocation.x, myLocation.y-1);
 			break;
-		case NEIGHBOR_RIGHT_ANGLE:
-			if(PositionValid(myLocation.x, myLocation.y+1))
-				neighborPos = Vector2(myLocation.x, myLocation.y+1);
-			break;
 		case NEIGHBOR_BACK_LEFT_ANGLE:
-			if(PositionValid(myLocation.x-1, myLocation.y-1))
+			if(0 == (myLocation.y % 2))
+			{
+			 	mod = -1;
+			}
+			if(PositionValid(myLocation.x+mod, myLocation.y-1))
 				neighborPos = Vector2(myLocation.x-1, myLocation.y-1);
 			break;
+		case NEIGHBOR_RIGHT_ANGLE:
+			if(0 != (myLocation.y % 2))
+			{
+				mod = 1;
+			}
+			if(PositionValid(myLocation.x + mod, myLocation.y+1))
+					neighborPos = Vector2(myLocation.x, myLocation.y+1);
+			break;
 		case NEIGHBOR_BACK_RIGHT_ANGLE:
-			if(PositionValid(myLocation.x-1, myLocation.y+1))
+			if(0 == (myLocation.y % 2))
+			{
+			 	mod = -1;
+			}
+			if(PositionValid(myLocation.x+mod, myLocation.y+1))
 				neighborPos = Vector2(myLocation.x-1, myLocation.y+1);
 			break;
 	}
+	
+	Debug.Log(String.Format("CellScript[{0}]:GetNeighbor() : neighbor{1} neighborPos{2}", StatsString(), neighbor, neighborPos));
 	
 	return neighborPos;
 }
@@ -529,10 +554,15 @@ function PositionInhabitant(new_inhabitant : GameObject, current_position : Vect
 	
 	//var z = new_inhabitant.localPosition.z;
 	new_inhabitant.transform.parent = gameObject.transform;
-	Debug.Log(new_inhabitant.transform.parent);
-	Debug.Log(gameObject.transform);
+	Debug.Log(String.Format("CellScript[{0}]:PositionInhabitant() : current_position{1}, z{2}",
+							StatsString(), current_position, z));
+	Debug.Log(String.Format("CellScript[{0}]:PositionInhabitant() : gameObject.transform{1}",
+							StatsString(), gameObject.transform));
+							
 	new_inhabitant.transform.localPosition = Vector3(SlotPos()[0], SlotPos()[1], z);
-	Debug.Log(String.Format("localPosition {0}, position {0}", new_inhabitant.transform.localPosition, new_inhabitant.transform.position));
+	Debug.Log(String.Format("CellScript[{0}]:PositionInhabitant() : localPosition {1}, position {2}",
+							StatsString(), new_inhabitant.transform.localPosition, new_inhabitant.transform.position));
+	
 	inhabitant = new_inhabitant;
 	inhabitant_occupied = true;
 }
@@ -544,7 +574,7 @@ function ClearInhabitant()
 	
 	Selected(false);
 	Targeted(false);
-	OnMouseExit();
+	//OnMouseExit();
 }
 
 function SetInhabitant(new_inhabitant : GameObject) : boolean
@@ -554,30 +584,29 @@ function SetInhabitant(new_inhabitant : GameObject) : boolean
 	
 	if( !SlotInhabited() )
 	{
+		Debug.Log(String.Format("CellScript[{0}]:SetInhabitant() : new_inhabitant{1}",
+								StatsString(), new_inhabitant.name));
 		if(new_inhabitant.name.Contains("forker") || new_inhabitant.name.Contains("brancher"))
 		{
-			Debug.Log("Set Inhabitant: Unit");
 			// MoveTo this position
 			PositionInhabitant(new_inhabitant, new_inhabitant.GetComponent(UnitScript).GetPosition(), 3.0);
 			new_inhabitant.GetComponent(UnitScript).SetPosition(myLocation.x, myLocation.y);	//script type dependent
 		}
 		else if(new_inhabitant.name.Contains("base"))
 		{	
-			Debug.Log("Set Inhabitant: Base");
+			
 			// MoveTo this position
 			PositionInhabitant(new_inhabitant, new_inhabitant.GetComponent(BaseScript).GetPosition(), 3.0);
 			new_inhabitant.GetComponent(BaseScript).SetPosition(myLocation.x, myLocation.y);
 		}
 		else if(new_inhabitant.name.Contains("bush"))
 		{
-			Debug.Log("Set Inhabitant: Bush");
 			// MoveTo this position
 			PositionInhabitant(new_inhabitant, new_inhabitant.GetComponent(BushScript).GetPosition(), 3.0);
 			new_inhabitant.GetComponent(BushScript).SetPosition(myLocation.x, myLocation.y);
 		}
 		else if(new_inhabitant.name.Contains("branch") || new_inhabitant.name.Contains("fork") || new_inhabitant.name.Contains("fortification"))
 		{
-			Debug.Log("Set Inhabitant: Pickup");
 			// MoveTo this position
 			PositionInhabitant(new_inhabitant, new_inhabitant.GetComponent(PickupScript).GetPosition(), 3.0);
 			new_inhabitant.GetComponent(PickupScript).SetPosition(myLocation.x, myLocation.y);
@@ -585,6 +614,7 @@ function SetInhabitant(new_inhabitant : GameObject) : boolean
 		else
 		{
 			Debug.Log("Setting Inhabitant Failed!");
+			Debug.Log(String.Format("CellScript[{0}]:SetInhabitant() : Error(Setting Inhabitant Failed)", StatsString()));
 			result = false;
 		}
 	}
@@ -650,9 +680,9 @@ function CreateBase(name : String, player : boolean, baseType : String) : boolea
 	if(result)
 	{
 		var baseScript : BaseScript = baseClone.GetComponent(BaseScript);
-		baseScript.SetBaseType(baseType);
-		baseScript.SetPlayerType(player);
 		baseScript.SetPosition(myLocation.x, myLocation.y);
+		baseScript.SetPlayerType(player);
+		baseScript.SetBaseType(baseType);
 	}
 	
 	return result;
@@ -668,7 +698,7 @@ function DestroyInhabitant() : boolean
 		Destroy(piece.gameObject);
 		Selected(false);
 		Targeted(false);
-		OnMouseExit();
+		//OnMouseExit();
 	}
 	
 	return result;

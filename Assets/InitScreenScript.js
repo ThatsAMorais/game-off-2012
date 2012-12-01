@@ -38,12 +38,14 @@ function DoInitGUI()
 	var selectionStrings : String[] = ["Start a Battle", "Credits"];
 	var selectionGridInt : int = 99;
 	
-	GUILayout.BeginArea(Rect(Screen.width * 0.2, Screen.height * 0.2, Screen.width*0.6, Screen.height*0.6));
+	GUILayout.BeginArea(Rect(Screen.width*0.05, Screen.height*0.05, Screen.width*0.9, Screen.height*0.4));
 	GUILayout.TextField("Forks - V - Branches", TitleTextStyle);
+	GUILayout.EndArea();
 	
+	
+	GUILayout.BeginArea(Rect(Screen.width*0.2, Screen.height*0.5, Screen.width*0.6, Screen.height*0.6));
 	//GUI.backgroundColor = Color.black;
 	//GUI.color = Color.green;
-	
 	selectionGridInt = GUILayout.SelectionGrid(selectionGridInt, selectionStrings, BUTTONS_PER_ROW);
 	switch(selectionGridInt)
 	{
@@ -53,7 +55,6 @@ function DoInitGUI()
 		case 1:
 			break;
 	}
-	
 	GUILayout.EndArea();
 }
 

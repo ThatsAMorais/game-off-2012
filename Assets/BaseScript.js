@@ -15,6 +15,8 @@ var CONSTRUCTION_TIME : float = 2;
 var MAX_BASE_HEALTH = 1024;
 
 var baseType : String;
+var playerBaseTexture : Material;
+var opponentBaseTexture : Material;
 var player : boolean = false;
 var forker : GameObject;
 var brancher : GameObject;
@@ -152,6 +154,7 @@ function SetPosition(x : int, y : int)
 	SetHeading(heading);
 
 	unit_creation_waypoint = GetCellScript(world_position.x, world_position.y).GetNeighbor(heading);
+	Debug.Log(String.Format("Setting position of {0}, so setting way-point and target to {1}", gameObject.name, unit_creation_waypoint));
 	
 	SetTarget(unit_creation_waypoint.x, unit_creation_waypoint.y);
 }
@@ -247,13 +250,21 @@ function IsPlayer() : boolean
 
 function SetBaseColor(color : Color)
 {
-	// TODO: Give access to the tower's primary color
+
+	if(player)
+	{
+		gameObject.renderer.material = playerBaseTexture;
+	}
+	else
+	{
+		gameObject.renderer.material = opponentBaseTexture;
+	}
+	
 	gameObject.transform.GetChild(0).renderer.material.color = color;
 }
 
 function GetCellScript(x : int, y : int) : CellScript
 {
-	Debug.Log(Vector2(x,y));
 	return GameObject.Find(String.Format("HexPlain/cell_{0}_{1}_", x, y)).GetComponent(CellScript);
 }
 
@@ -297,12 +308,18 @@ function Forked()
 
 function DirectUnit(index : int, position : Vector2)
 {
-	units[index].GetComponent(UnitScript).SetTarget(position.x, position.y);
+	if(index > 0 && index < units.Count)
+	{
+		units[index].GetComponent(UnitScript).SetTarget(position.x, position.y);
+	}
+	else
+	{
+		Debug.Log(String.Format("BaseScript:DirectUnit() : Bad Index{0}, position{1}", index, position));
+	}
 }
 
 function MoveTo(piece : GameObject, x : int, y : int) : boolean
 {
-	Debug.Log(Vector2(x,y));
 	return GetCellScript(x,y).MoveTo(piece);
 }
 
@@ -312,7 +329,7 @@ function PlaceUnit(unit : GameObject) : boolean
 	var position : Vector2 = GetPosition();
 	var placementPos : Vector2 = GetCellScript(position.x, position.y).GetNeighbor(GetHeading());
 	
-	Debug.Log(String.Format("PlaceUnit {0}", placementPos));
+	Debug.Log(String.Format("PlaceUnit unit{0} position{1}", unit, placementPos));
 	
 	unit.GetComponent(UnitScript).MoveSelf(placementPos.x, placementPos.y);
 
@@ -408,7 +425,7 @@ function ClearCurrentConstruction()
 
 function StepConstruction(deltaTime : float)
 {
-	construction_progress = 0; // DISABLING this
+	construction_progress = CONSTRUCTION_TIME; // DISABLING this
 	
 	if(construction_progress >= CONSTRUCTION_TIME)
 	{
