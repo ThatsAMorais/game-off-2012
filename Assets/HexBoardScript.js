@@ -111,11 +111,13 @@ function EndTurn()
 	{
 		current_round--;
 		resetTurn("player_base");
+		ToggleCamControl(true);
 	}
 	else
 	{
 		opponent_ai_action_delay = 0;
 		resetTurn("opponent_base");
+		ToggleCamControl(false);
 	}
 }
 

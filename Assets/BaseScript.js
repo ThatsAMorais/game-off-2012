@@ -39,9 +39,9 @@ private var previousPathHighlight : Vector2;
 private var selected : boolean = false;
 private var units : List.<GameObject> = new List.<GameObject>();
 
-private var MAX_BRANCHES : int = 4;
+private var MAX_BRANCHES : int = 33;
 private var FORK_DAMAGE = 0.3;
-private var branches : List.<GameObject> = new List.<GameObject>();
+private var branchCount : int = 0;
 
 private var units_made_this_turn : int = 0;
 
@@ -269,30 +269,30 @@ function GetCellScript(x : int, y : int) : CellScript
 }
 
 
-function TakeBranches(branchesGiven : List.<GameObject>)
+function TakeBranches(branchesGiven : int) : int
 {
 	var branches_taken : int = 0;
 	
-	while(MAX_BRANCHES < branches.Count || branches_taken == branchesGiven.Count)
+	while(MAX_BRANCHES > branchCount && branches_taken < branchesGiven)
 	{
-		branches.Add(branchesGiven[branches_taken]);
+		branchCount++;
 		branches_taken++;
 	}
 	
 	return branches_taken;
 }
 
-function GetBranch() : GameObject
+function BranchTaken() : boolean
 {
-	var branch : GameObject;
+	var result : boolean = false;
 	
-	if(0 < branches.Count)
+	if(0 < branchCount)
 	{
-		branch = branches[0];
-		branches.RemoveAt(0);
+		branchCount--;
+		result = true;
 	}
 	
-	return branch;
+	return result;
 }
 
 function TakeDamage(damage : float)

@@ -5,6 +5,7 @@ import System.Collections.Generic;
 // Public
 var fork : GameObject;
 var fortification : GameObject;
+var branch : GameObject;
 var item_placement = 0;
 var team_player : boolean = false;
 var home_base : GameObject = null;
@@ -114,20 +115,25 @@ function Update ()
 	
 	if(has_target && 0 < GetActionPoints())
 	{
-		//if(time_since_last_move >= 2.0)
+		time_since_last_move += Time.deltaTime;
+		
+		//if(time_since_last_move >= .05)
 		if(true)
 		{
+			time_since_last_move = 0;
+			
 			// Get the neighbor in the direction we are facing (which is the direction of our target)		
 			var nextCellPos : Vector2 = GetNeighbor(GetHeading());
 		
-			Debug.Log(String.Format("{0}:has_target : target({1})", DebugLogLeadString(), GetCellScript(nextCellPos.x,nextCellPos.y).GetInhabitant()));
+			//Debug.Log(String.Format("{0}:has_target : target({1})", DebugLogLeadString(), GetCellScript(nextCellPos.x,nextCellPos.y).GetInhabitant()));
 			
-			if(GetCellScript(nextCellPos.x, nextCellPos.y).SlotInhabited())
+			if(PositionValid(nextCellPos) && GetCellScript(nextCellPos.x, nextCellPos.y).SlotInhabited())
 			{
+				Debug.Log("SlotInhabited()");
 				// Something is there
-
-				if(nextCellPos == GetTarget())
-				{
+				
+				//if(nextCellPos.x == GetTarget().x && nextCellPos.y == GetTarget().y)
+				//{
 					var inhabitant : GameObject = GetCellScript(nextCellPos.x,nextCellPos.y).GetInhabitant();
 					var neighborName : String = inhabitant.name;
 					
@@ -162,7 +168,7 @@ function Update ()
 						// Friend
 						if(IsPlayer() == inhabitant.GetComponent(UnitScript).IsPlayer())
 						{
-							MoveTowardHeading();
+							MoveTowardHeading();	// This will redirect as needed
 							has_target = false;
 						}
 						// Foe
@@ -170,11 +176,13 @@ function Update ()
 						{
 							if(in_hand.name.Contains(FORK))
 							{
+								Debug.Log("Hit an enemy, forking");
 								// Fork
 								Fork(inhabitant);
 							}
 							else
 							{
+								Debug.Log("Hit an enemy, pushing");
 								// Push
 								Push(inhabitant, GetHeading());
 							}
@@ -183,6 +191,7 @@ function Update ()
 					// Bush
 					else if(neighborName.Contains(BUSH))
 					{
+						Debug.Log("Hit a bush");
 						PickBranch(inhabitant);
 					}
 					// Branch
@@ -192,12 +201,13 @@ function Update ()
 					{
 						Pickup(inhabitant);
 					}
+					/*
 				}
 				else
 				{
 					// Go around
-					MoveTowardHeading();
-				}
+					MoveTowardHeading();	// This will redirect as needed
+				}*/
 			}
 			else
 			{			
@@ -218,12 +228,6 @@ function Update ()
 					time_since_last_move = 1.0;
 				}
 			}
-			
-			time_since_last_move = 0;
-		}
-		else
-		{
-			time_since_last_move += Time.deltaTime;
 		}
 	}
 }
@@ -294,11 +298,11 @@ function GiveBranches(piece : GameObject, numBranches : int)
 	
 	if(piece.name.Contains(BASE))
 	{
-		branches_taken = piece.GetComponent(BaseScript).TakeBranches(branches.GetRange(0, numBranches));
+		branches_taken = piece.GetComponent(BaseScript).TakeBranches(numBranches);
 	}
 	else if(piece.name.Contains(FORKER) || piece.name.Contains(BRANCHER))
 	{
-		branches_taken = piece.GetComponent(UnitScript).TakeBranches(branches.GetRange(0, numBranches));
+		branches_taken = piece.GetComponent(UnitScript).TakeBranches(numBranches);
 	}
 	
 	// Remove the corresponding branches
@@ -310,13 +314,13 @@ function GiveBranches(piece : GameObject, numBranches : int)
 	Debug.Log(String.Format("{0}:GiveBranches()", DebugLogLeadString()));
 }
 
-function TakeBranches(branchesGiven : List.<GameObject>)
+function TakeBranches(branchesGiven : int) : int
 {
 	var branches_taken : int = 0;
 	
-	while(MAX_BRANCHES < branches.Count || branches_taken == branchesGiven.Count)
+	while(MAX_BRANCHES < branches.Count || branches_taken == branchesGiven)
 	{
-		branches.Add(branchesGiven[branches_taken]);
+		AddBranch();
 		branches_taken++;
 	}
 	
@@ -327,30 +331,40 @@ function TakeBranches(branchesGiven : List.<GameObject>)
 
 function PickBranch(piece : GameObject)
 {
-	var branch : GameObject;
+	var got_a_branch : boolean = false;
 	// Cannot take a branch if carrying a weapon
 	if(4 > branches.Count && null == in_hand)
 	{
 		if(piece.name.Contains("bush"))
 		{
-			branch = piece.GetComponent(BushScript).GetBranch();
-			if(branch)
-				branches.Add(branch);
+			got_a_branch = piece.GetComponent(BushScript).BranchTaken();
+			
 		}
 		else if(piece.name.Contains("base"))
 		{
-			branch = piece.GetComponent(BaseScript).GetBranch();
-			if(branch)
-				branches.Add(branch);
+			got_a_branch = piece.GetComponent(BaseScript).BranchTaken();
 		}
 		
-		if(branch)
+		if(got_a_branch)
 		{
-			branch.transform.localPosition = new Vector3(0, -1, branch_pos[0]);
+			AddBranch();
 		}
 	}
 	
 	Debug.Log(String.Format("{0}:PickBranch()", DebugLogLeadString()));
+}
+
+function AddBranch()
+{	
+	var branch : GameObject = Instantiate(branch);
+	branch.transform.localPosition = new Vector3(0, -1, branch_pos[branches.Count-1]);
+	branches.Add(branch);
+}
+
+function UseBranch()
+{
+	Destroy(branches[0]);
+	branches.RemoveAt(0);
 }
 
 function Fork(piece : GameObject)
@@ -381,7 +395,7 @@ function Forked()
 function Push(unit : GameObject, heading : int)
 {
 	var push_success : boolean = false;
-	var nextCellPos : Vector2 = GetNeighbor(heading);
+	var nextCellPos : Vector2 = GetNeighbor(GetNeighborDirection(heading));
 
 	// Attempt to push the unit
 	push_success = unit.GetComponent(UnitScript).Pushed(heading);
@@ -397,7 +411,7 @@ function Push(unit : GameObject, heading : int)
 
 function Pushed(heading : int) : boolean
 {
-	var nextCellPos : Vector2 = GetNeighbor(heading);
+	var nextCellPos : Vector2 = GetNeighbor(GetNeighborDirection(heading));
 	Debug.Log(String.Format("{0}:Pushed()", DebugLogLeadString()));
 	return MoveTo(gameObject, nextCellPos.x, nextCellPos.y);
 }
@@ -428,7 +442,7 @@ function MoveTowardHeading()
 	// Break when the first uninhabited slot is found
 	while(slotInhabited && has_target)
 	{	
-		nextCellPos = GetNeighbor(currentHeading);
+		nextCellPos = GetNeighbor(GetNeighborDirection(currentHeading));
 		
 		if(!PositionValid(nextCellPos))
 		{
@@ -472,6 +486,7 @@ function MoveTowardHeading()
 		}
 		else
 		{
+			SetHeading(currentHeading);
 			UseActionPoints(1);
 		}
 	}
@@ -683,6 +698,9 @@ function SetHeadingTowardPosition(position : Vector2) : int
 		}
 	}
 	
+	Debug.Log(String.Format("{0}:SetHeadingTowardPosition : position({1}) diffY({2}) diffX({3}) slope({4}) ==> direction({5})",
+			  DebugLogLeadString(), position, diffY, diffX, slope, direction));
+	
 	SetHeading(direction);
 	
 	return direction;
@@ -710,11 +728,7 @@ function GetCellScript(x : int, y : int) : CellScript
 	return null;
 }
 
-function GetBehindNeighbor()
-{
-}
-
-function GetNeighbor(direction : int) : Vector2
+function GetNeighborDirection(direction : int) : int
 {
 	var neighborDir = GetHeading(); // default to HEADING_STRAIGHT
 	/*
@@ -761,9 +775,12 @@ function GetNeighbor(direction : int) : Vector2
 			break;
 	}
 	
-	
-	var neighborPos : Vector2 = GetCellScript(GetPosition().x, GetPosition().y).GetNeighbor(neighborDir);
-	return neighborPos;
+	return neighborDir;
+}
+
+function GetNeighbor(direction : int) : Vector2
+{
+	return GetCellScript(GetPosition().x, GetPosition().y).GetNeighbor(direction);
 }
 
 function GetMapSize() : Vector2
@@ -784,7 +801,7 @@ function TossItem(item : GameObject) : boolean
 {
 	var result : boolean = false;
 	var current_heading : int = HEADING_BACK;
-	var neighbor = GetNeighbor(current_heading);
+	var neighbor = GetNeighbor(GetNeighborDirection(current_heading));
 
 	while(false == MoveTo(item, neighbor.x, neighbor.y))
 	{
@@ -795,7 +812,7 @@ function TossItem(item : GameObject) : boolean
 			break;
 		}
 		
-		neighbor = GetNeighbor(current_heading);
+		neighbor = GetNeighbor(GetNeighborDirection(current_heading));
 	}
 	
 	return result;
@@ -842,7 +859,10 @@ function CreateItem()
 	}
 	
 	// Clear the used resources
-	branches.Clear();
+	while(branches.Count > 0)
+	{
+		UseBranch();
+	}
 	
 	item.name = name;
 	
