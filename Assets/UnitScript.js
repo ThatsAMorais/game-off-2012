@@ -10,7 +10,7 @@ var item_placement = 0;
 var team_player : boolean = false;
 var home_base : GameObject = null;
 var unitType : String;
-var ACTION_POINTS_PER_TURN : int = 3;
+var ACTION_POINTS_PER_TURN : int = 5;
 var MAX_UNIT_HEALTH = 64;
 
 private var HEADING_STRAIGHT = 0;
@@ -44,12 +44,12 @@ private var world_position : Vector2 = Vector2(-1,-1);
 private var in_hand : GameObject = null;
 
 private var selected : boolean = false;
-private var action_points = ACTION_POINTS_PER_TURN;
+var action_points = ACTION_POINTS_PER_TURN;
 private var target_position : Vector2;
 private var path : List.<Vector2> = new List.<Vector2>();
 private var has_target : boolean = false;
 private var previousPathHighlight : Vector2;
-private var time_since_last_move : int = 1.0;
+private var time_since_last_move : float = 1.0;
 
 private var FORK_DAMAGE = 0.3;
 
@@ -115,25 +115,30 @@ function Update ()
 	
 	if(has_target && 0 < GetActionPoints())
 	{
+		if(GetPosition() == GetTarget())
+		{
+			has_target = false;
+		}
+		
 		time_since_last_move += Time.deltaTime;
 		
-		//if(time_since_last_move >= .05)
-		if(true)
+		if(0.75 <= time_since_last_move)
 		{
 			time_since_last_move = 0;
 			
+			SetHeadingTowardPosition(GetTarget());
 			// Get the neighbor in the direction we are facing (which is the direction of our target)		
 			var nextCellPos : Vector2 = GetNeighbor(GetHeading());
 		
-			//Debug.Log(String.Format("{0}:has_target : target({1})", DebugLogLeadString(), GetCellScript(nextCellPos.x,nextCellPos.y).GetInhabitant()));
+			Debug.Log(String.Format("{0}:GetHeading() : Current Heading({1})", DebugLogLeadString(), GetHeading()));
 			
 			if(PositionValid(nextCellPos) && GetCellScript(nextCellPos.x, nextCellPos.y).SlotInhabited())
 			{
 				Debug.Log("SlotInhabited()");
 				// Something is there
 				
-				//if(nextCellPos.x == GetTarget().x && nextCellPos.y == GetTarget().y)
-				//{
+				if(nextCellPos.x == GetTarget().x && nextCellPos.y == GetTarget().y)
+				{
 					var inhabitant : GameObject = GetCellScript(nextCellPos.x,nextCellPos.y).GetInhabitant();
 					var neighborName : String = inhabitant.name;
 					
@@ -201,32 +206,16 @@ function Update ()
 					{
 						Pickup(inhabitant);
 					}
-					/*
 				}
 				else
 				{
 					// Go around
 					MoveTowardHeading();	// This will redirect as needed
-				}*/
+				}
 			}
 			else
 			{			
 				MoveTowardHeading();
-			}
-						
-			// If we have walked into the target cell, then stop
-			if(has_target)
-			{
-				if(GetPosition() == GetTarget())
-				{
-					has_target = false;
-				} 
-				else
-				{
-					// Look toward the target
-					SetHeadingTowardPosition(GetTarget());
-					time_since_last_move = 1.0;
-				}
 			}
 		}
 	}
@@ -277,6 +266,8 @@ function DropItem()
 	{	
 		DropBranch(1);
 	}
+	
+	UseActionPoints(1);
 	
 	Debug.Log(String.Format("{0}:DropItem()", DebugLogLeadString()));
 }
@@ -351,14 +342,16 @@ function PickBranch(piece : GameObject)
 		}
 	}
 	
+	UseActionPoints(1);
+	
 	Debug.Log(String.Format("{0}:PickBranch()", DebugLogLeadString()));
 }
 
 function AddBranch()
 {	
 	var branch : GameObject = Instantiate(branch);
-	branch.transform.localPosition = new Vector3(0, -1, branch_pos[branches.Count-1]);
 	branches.Add(branch);
+	branch.transform.localPosition = new Vector3(0, -1, branch_pos[branches.Count-1]);	
 }
 
 function UseBranch()
@@ -407,6 +400,8 @@ function Push(unit : GameObject, heading : int)
 	}
 	
 	Debug.Log(String.Format("{0}:Push()", DebugLogLeadString()));
+	
+	UseActionPoints(1);
 }
 
 function Pushed(heading : int) : boolean
@@ -431,76 +426,90 @@ function Pickup(pickup : GameObject)
 	}
 	
 	Debug.Log(String.Format("{0}:Pickup()", DebugLogLeadString()));
+	
+	UseActionPoints(1);
+}
+
+function TurnRight()
+{
+	var current_heading : int = GetHeading() + HEADING_RIGHT;
+	
+	if(current_heading < -120)
+	{
+		current_heading = HEADING_BACK;
+	}
+	
+	SetHeading(current_heading);
+}
+
+function TurnLeft()
+{
+	var current_heading : int = GetHeading() + HEADING_LEFT;
+	
+	if(current_heading > 180)
+	{
+		current_heading = HEADING_BACK_RIGHT;
+	}
+	
+	SetHeading(current_heading);
 }
 
 function MoveTowardHeading()
 {
-	var currentHeading : int = HEADING_STRAIGHT;
-	var slotInhabited = true;
-	var nextCellPos : Vector2;
+	var original_heading : int = GetHeading();
+	var slotInhabited : boolean = true;
+	var nextCellPos : Vector2 = GetNeighbor(GetHeading());
 	
-	// Break when the first uninhabited slot is found
-	while(slotInhabited && has_target)
-	{	
-		nextCellPos = GetNeighbor(GetNeighborDirection(currentHeading));
-		
-		if(!PositionValid(nextCellPos))
-		{
-			continue;
-		}
-		
+	if(PositionValid(nextCellPos))
+	{
 		slotInhabited = GetCellScript(nextCellPos.x, nextCellPos.y).SlotInhabited();
-		
-		if(slotInhabited)
-		{			
-			switch(currentHeading)
-			{
-				case HEADING_STRAIGHT:
-					currentHeading = HEADING_RIGHT;
-					break;
-				case HEADING_RIGHT:
-					currentHeading = HEADING_LEFT;
-					break;
-				case HEADING_LEFT:
-					currentHeading = HEADING_BACK_RIGHT;
-					break;
-				case HEADING_BACK_RIGHT:
-					currentHeading = HEADING_BACK_LEFT;
-					break;
-				case HEADING_BACK_LEFT:
-					currentHeading = HEADING_BACK;
-					break;
-				case HEADING_BACK:
-					// Stuck on all sides
-					has_target = false;
-					break;
-			}
-		}
 	}
 	
-	if(has_target)
+	// Break when the first uninhabited slot is found
+	while(slotInhabited)
+	{	
+		TurnLeft();
+	
+		if(original_heading == GetHeading())
+		{
+			break;
+		}
+		
+		nextCellPos = GetNeighbor(GetHeading());
+		
+		if(PositionValid(nextCellPos) && slotInhabited)
+		{
+			slotInhabited = GetCellScript(nextCellPos.x, nextCellPos.y).SlotInhabited();
+		}
+	}
+		
+	if(!slotInhabited)
 	{
 		if(false == MoveSelf(nextCellPos.x, nextCellPos.y))
 		{
-			Debug.Log("Failed to move to nextCellPos");
+			has_target = false;
+			SetHeading(original_heading);
 		}
 		else
 		{
-			SetHeading(currentHeading);
 			UseActionPoints(1);
 		}
 	}
-	
-	Debug.Log(String.Format("{0}:MoveTowardHeading()", DebugLogLeadString()));
+	else
+	{
+		has_target = false;
+	}
 }
 
 function MoveSelf(x : int, y : int) : boolean
 {
+	UseActionPoints(1);
 	return MoveTo(gameObject, x, y);
 }
 
 function MoveTo(object : GameObject, x : int, y : int) : boolean
 {
+	Debug.Log("unit - moveto");
 	return GetCellScript(x, y).MoveTo(object);
 }
 
@@ -531,12 +540,9 @@ function UseActionPoints(ap_used : int)
 
 function OnMouseEnter()
 {
-    //startcolor = renderer.material.color;
-    //renderer.material.color = Color.yellow;
 }
 function OnMouseExit()
 {
-    //renderer.material.color = startcolor;
 }
 
 function GetTarget() : Vector2
@@ -553,8 +559,8 @@ function SetTarget(x : int, y : int)
 
 	target_position = new Vector2(x,y);
 	Debug.Log(String.Format("SetTarget {0}",target_position));
-	SetHeadingTowardPosition(target_position);
-	has_target = true;
+	if(GetPosition().x != target_position.x || GetPosition().y != target_position.y)
+		has_target = true;
 }
 
 function MouseoverTarget(position : Vector2)
@@ -652,58 +658,95 @@ function SetHeading(newHeading : int)
 	RotateToHeading();
 }
 
-function SetHeadingTowardPosition(position : Vector2) : int
+function SetHeadingTowardPosition(position : Vector2)
 {
 	var startPoint : Vector2 = GetPosition();
-	var diffX : float = diff(startPoint.x, position.x);
-	var diffY : float = diff(startPoint.y, position.y);
-	var slope : float = diffY / diffX;
+	var numerator : float = position.y - startPoint.y;
+	var denominator : float = position.x - startPoint.x;
+	var slope : float;
 	var direction : int = 0;
 	
-	if(0.5 >= slope)
+	if(numerator == 0)
 	{
-		// Move along x
-		if(position.x > startPoint.x)
-		{
-			direction = HEADING_STRAIGHT;
-		}
-		else
-		{
-			direction = HEADING_BACK;
-		}
+		direction = (position.x < startPoint.x) ? HEADING_BACK : HEADING_STRAIGHT;
+	}
+	else if(denominator == 0)
+	{
+		// Depending on the y-direction we will be going "LEFT" or "RIGHT" (up or down
+		var mod : int = (position.y < startPoint.y) ? -1 : 1;
+		// Depending on the team (sway to the Back or Forward)
+		direction = IsPlayer() ? mod * HEADING_BACK_RIGHT : mod * HEADING_RIGHT;
 	}
 	else
 	{
-		if(position.x > startPoint.x)
+		slope = numerator / denominator;
+		
+		if(slope < -1)
 		{
-			if(position.y > startPoint.y)
+			//Larger number in the numerator ==> larger Y distance
+			if(numerator > 0)
 			{
+				// Moving in a -y direction and a +x direction (+ / -)
 				direction = HEADING_RIGHT;
 			}
 			else
 			{
+				// Moving in a +y direction and a -x direction
+				direction = HEADING_BACK_LEFT;
+			}
+		}
+		else if(-1 < slope && slope < 0)
+		{
+			// Larger number in the denominator ==> larger X distance
+			if(denominator > 0)
+			{
+				// Moving in a +x direction and a -y direction
+				direction = HEADING_BACK_LEFT;
+			}
+			else
+			{
+				// Moving in a -x direction and a +y direction
+				direction = HEADING_RIGHT;
+			}
+		}
+		else if(0 < slope && slope < 1)
+		{
+			// Larger number in the denominator == larger X distance
+			if(denominator < 0 && numerator < 0)
+			{
+				// Moving in a +y direction and a -x direction
+				direction = HEADING_BACK_RIGHT;
+			}
+			else // only possibility is (numerator > 0 && denominator > 0)
+			{
+				// Moving in a -y direction and a +x direction
 				direction = HEADING_LEFT;
+			}
+		}
+		else if(1 < slope)
+		{
+			// Larger number in the numerator == larger Y distance
+			if(numerator < 0 && denominator < 0)
+			{
+				// Moving in a -y direction and a +x direction
+				direction = HEADING_LEFT;
+			}
+			else // only possibility is (numerator > 0 && denominator > 0)
+			{
+				// Moving in a +y direction and a -x direction
+				direction = HEADING_BACK_RIGHT;
 			}
 		}
 		else
 		{
-			if(position.y > startPoint.y)
-			{
-				direction = HEADING_BACK_RIGHT;
-			}
-			else
-			{
-				direction = HEADING_BACK_LEFT;
-			}
+			Debug.Log("SetHeadingTowardPosition(): Failed to find a heading");
 		}
 	}
 	
-	Debug.Log(String.Format("{0}:SetHeadingTowardPosition : position({1}) diffY({2}) diffX({3}) slope({4}) ==> direction({5})",
-			  DebugLogLeadString(), position, diffY, diffX, slope, direction));
+	Debug.Log(String.Format("{0}:SetHeadingTowardPosition : position({1}) numerator({2}) denominator({3}) slope({4}) ==> direction({5})",
+			  				DebugLogLeadString(), position, numerator, denominator, slope, direction));
 	
 	SetHeading(direction);
-	
-	return direction;
 }
 
 function GetHeading() : int
@@ -719,10 +762,6 @@ function GetCellScript(x : int, y : int) : CellScript
 	if(null != cell)
 	{
 		return cell.GetComponent(CellScript);
-	}
-	else
-	{
-		//Debug.Log(String.Format("Error: {0}", Vector2(x,y)));
 	}
 	
 	return null;
@@ -815,6 +854,8 @@ function TossItem(item : GameObject) : boolean
 		neighbor = GetNeighbor(GetNeighborDirection(current_heading));
 	}
 	
+	UseActionPoints(1);
+	
 	return result;
 }
 
@@ -867,6 +908,8 @@ function CreateItem()
 	item.name = name;
 	
 	GraspItem(item);
+	
+	UseActionPoints(1);
 }
 
 function SetHomeBase(homeBase : GameObject)
@@ -968,15 +1011,20 @@ function DoMouseoverGUI(rect : Rect, guiBG : Texture)
 
 function DoStatsGUI()
 {
-	var isPlayer : boolean = IsPlayer();
-	
-	GUILayout.TextField(String.Format("Unit : {0} ({1})", GetUnitType(), isPlayer ? "Ally" : "Enemy"));
+	GUILayout.TextField(String.Format("Unit : {0} ({1})", GetUnitType(), IsPlayer() ? "Ally" : "Enemy"));
 	GUILayout.TextField(String.Format("Health: {0}", (GetHealth()/MAX_UNIT_HEALTH)*100));
-	GUILayout.TextField(String.Format("Branches: {0}", branches.Count));
-	GUILayout.TextField(String.Format("Action Points: {0}", GetActionPoints()));
 	GUILayout.TextField(String.Format("Number of {0}s made : {1}",
 									 GetUnitType() == FORKER ? FORK : FORTIFICATION,
 									 GetUnitType() == FORKER ? GetForkCount() : GetFortificationCount()));
+	if(IsPlayer())
+	{
+		GUILayout.TextField(String.Format("Branches: {0}", branches.Count));
+		GUILayout.TextField(String.Format("Action Points: {0}", GetActionPoints()));
+		if(has_target)
+		{
+			GUILayout.TextField(String.Format("Target: {0}", GetTarget()));
+		}
+	}	
 }
 
 function Selected(selected : boolean) : boolean

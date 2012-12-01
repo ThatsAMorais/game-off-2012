@@ -13,6 +13,7 @@ function Update ()
 	if(0 >= branchCount)
 	{
 		Destroy(gameObject);
+		GetCellScript().MoveFrom(gameObject);
 	}
 }
 
@@ -39,8 +40,8 @@ function BranchTaken() : boolean
 	{
 		var name : String = String.Format("branch_{0}", branchCount);
 		GameObject.Find(String.Format("{0}/Branch_00{1}", gameObject.name, branchCount)).renderer.enabled = false;
-		branchCount--;
 		result = true;
+		branchCount--;
 	}
 	
 	return result;
@@ -51,7 +52,7 @@ function GrowBranche()
 	//TODO: Would be a cool feature, but no time
 }
 
-function GetBranchCount()
+function GetBranchCount() : int
 {
 	return branchCount;
 }

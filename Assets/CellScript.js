@@ -146,11 +146,6 @@ function OnMouseEnter()
 {
 	if(SlotInhabited())
 	{
-		// Enable pass-thru of Cell-GUI-area, where the inhabitant of a cell is described in general
-		// TODO
-		
-		
-		// DISABLED for now
 		mouseoverHighlightOn = true;
 	}
 }
@@ -425,7 +420,8 @@ function FadeColor(color : Color, mod : float, speed : int) : float
 
 function DoMouseoverHighlight()
 {
-	//mouseoverHighlightMod = FadeColor(mouseoverHighlightColor, mouseoverHighlightMod, 5);
+	
+	mouseoverHighlightMod = FadeColor(mouseoverHighlightColor, mouseoverHighlightMod, 5);
 }
 
 function DoTargetedHighlight()
@@ -482,35 +478,19 @@ function GetNeighbor(neighbor : int) : Vector2
 				neighborPos = Vector2(myLocation.x-1, myLocation.y);
 			break;
 		case NEIGHBOR_LEFT_ANGLE:
-			if(0 != (myLocation.y % 2))
-			{
-				mod = 1;
-			}
 			if(PositionValid(myLocation.x + mod, myLocation.y-1))
 				neighborPos = Vector2(myLocation.x, myLocation.y-1);
 			break;
 		case NEIGHBOR_BACK_LEFT_ANGLE:
-			if(0 == (myLocation.y % 2))
-			{
-			 	mod = -1;
-			}
 			if(PositionValid(myLocation.x+mod, myLocation.y-1))
 				neighborPos = Vector2(myLocation.x-1, myLocation.y-1);
 			break;
 		case NEIGHBOR_RIGHT_ANGLE:
-			if(0 != (myLocation.y % 2))
-			{
-				mod = 1;
-			}
 			if(PositionValid(myLocation.x + mod, myLocation.y+1))
 					neighborPos = Vector2(myLocation.x, myLocation.y+1);
 			break;
 		case NEIGHBOR_BACK_RIGHT_ANGLE:
-			if(0 == (myLocation.y % 2))
-			{
-			 	mod = -1;
-			}
-			if(PositionValid(myLocation.x+mod, myLocation.y+1))
+			if(PositionValid(myLocation.x, myLocation.y+1))
 				neighborPos = Vector2(myLocation.x-1, myLocation.y+1);
 			break;
 	}
@@ -549,7 +529,9 @@ function PositionInhabitant(new_inhabitant : GameObject, current_position : Vect
 	if(PositionValid(position.x, position.y))
 	{
 		// MoveFrom previous position
-		GameObject.Find(String.Format("/HexPlain/cell_{0}_{1}_", position.x, position.y)).GetComponent(CellScript).MoveFrom(new_inhabitant);
+		var fromCell : CellScript = GameObject.Find(String.Format("/HexPlain/cell_{0}_{1}_", position.x, position.y)).GetComponent(CellScript);
+		Selected(fromCell.IsSelected());
+		fromCell.MoveFrom(new_inhabitant);
 	}
 	
 	//var z = new_inhabitant.localPosition.z;
@@ -574,7 +556,7 @@ function ClearInhabitant()
 	
 	Selected(false);
 	Targeted(false);
-	//OnMouseExit();
+	OnMouseExit();
 }
 
 function SetInhabitant(new_inhabitant : GameObject) : boolean

@@ -8,11 +8,11 @@ var groundTexture2 : Texture2D;
 var playerType = PLAYER_TYPE_BOTH;
 var guiBG_default : Texture;
 
-var playerPos : Vector2 = Vector2(28,28);
-var opponentPos : Vector2 = Vector2(3,3);
+var playerPos : Vector2 = Vector2(24,24);
+var opponentPos : Vector2 = Vector2(8,8);
 
 var MAX_UNITS_PER_TURN : int = 3;
-var MAX_UNITS_PER_BASE = 21;
+var MAX_UNITS_PER_BASE = 18;
 
 // "constants"
 private var lo_index : int = 0;
@@ -36,8 +36,8 @@ private var gameStarted : boolean = false;
 private var player_turn : boolean = true;
 
 private var AI_ACTION_DELAY : float = 3.0;
-private var NUMBER_OF_ACTION_POINTS : int = 3;
-private var MAX_ROUNDS : int = 4;
+private var NUMBER_OF_ACTION_POINTS : int = 5;
+private var MAX_ROUNDS : int = 18;
 private var current_round : int = MAX_ROUNDS;
 private var opponent_ai_action_delay : float = AI_ACTION_DELAY;
 private var opponent_action_points : int = NUMBER_OF_ACTION_POINTS;
@@ -112,12 +112,14 @@ function EndTurn()
 		current_round--;
 		resetTurn("player_base");
 		ToggleCamControl(true);
+		GetCamControl().SetPosition(playerPos);
 	}
 	else
 	{
 		opponent_ai_action_delay = 0;
 		resetTurn("opponent_base");
 		ToggleCamControl(false);
+		GetCamControl().SetPosition(opponentPos);
 	}
 }
 

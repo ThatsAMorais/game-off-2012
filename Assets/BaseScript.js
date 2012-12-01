@@ -9,8 +9,8 @@ private var HEADING_RIGHT = -60;
 private var HEADING_BACK_RIGHT = -120;
 private var HEADING_BACK = 180;
 
-var MAX_UNITS_PER_TURN : int = 3;
-var MAX_UNITS_PER_BASE = 15;
+var MAX_UNITS_PER_TURN : int = 99;
+var MAX_UNITS_PER_BASE = 99;
 var CONSTRUCTION_TIME : float = 2;
 var MAX_BASE_HEALTH = 1024;
 
@@ -323,15 +323,78 @@ function MoveTo(piece : GameObject, x : int, y : int) : boolean
 	return GetCellScript(x,y).MoveTo(piece);
 }
 
+
+function TurnRight(heading : int) : int
+{
+	var current_heading : int = heading + HEADING_RIGHT;
+	
+	if(current_heading < -120)
+	{
+		current_heading = HEADING_BACK;
+	}
+	
+	return current_heading;
+}
+
+function TurnLeft(heading : int) : int
+{
+	var current_heading : int = heading + HEADING_LEFT;
+	
+	if(current_heading > 180)
+	{
+		current_heading = HEADING_BACK_RIGHT;
+	}
+	
+	return current_heading;
+}
+
+function PositionValid(position : Vector2) : boolean
+{
+	if(0 > position.x || GameObject.Find("HexPlain").GetComponent(HexBoardScript).GetSize().x < position.x ||
+	   0 > position.y || GameObject.Find("HexPlain").GetComponent(HexBoardScript).GetSize().y < position.y)
+		return false;
+	
+	return true;
+}
+
 function PlaceUnit(unit : GameObject) : boolean
 {
-	var result : boolean = true;
-	var position : Vector2 = GetPosition();
-	var placementPos : Vector2 = GetCellScript(position.x, position.y).GetNeighbor(GetHeading());
+	var result : boolean = false;
+	var slotInhabited = true;
+	var current_heading : int = GetHeading();
+	var cellScript : CellScript = GetCellScript(GetPosition().x, GetPosition().y); 
+	var nextCellPos : Vector2 = cellScript.GetNeighbor(current_heading);
 	
-	Debug.Log(String.Format("PlaceUnit unit{0} position{1}", unit, placementPos));
+	if(PositionValid(nextCellPos))
+	{
+		slotInhabited = GetCellScript(nextCellPos.x, nextCellPos.y).SlotInhabited();
+	}
 	
-	unit.GetComponent(UnitScript).MoveSelf(placementPos.x, placementPos.y);
+	// Break when the first uninhabited slot is found
+	while(slotInhabited)
+	{	
+		TurnRight(current_heading);
+		
+		if(current_heading == GetHeading())
+		{
+			break;
+		}
+		
+		nextCellPos = cellScript.GetNeighbor(GetHeading());
+		
+		if(PositionValid(nextCellPos))
+		{
+			slotInhabited = GetCellScript(nextCellPos.x, nextCellPos.y).SlotInhabited();
+		}
+	}
+	
+	if(!slotInhabited)
+	{
+		Debug.Log(String.Format("PlaceUnit unit{0} position{1}", unit, nextCellPos));
+		
+		unit.GetComponent(UnitScript).MoveSelf(nextCellPos.x, nextCellPos.y);
+		result = true;
+	}
 
 	return result;
 }
@@ -381,7 +444,6 @@ function CreateUnit(unit : String)
 	
 		if(PlaceUnit(newUnit))
 		{
-			
 			unitScript = newUnit.GetComponent(UnitScript);
 			unitScript.SetTeam(IsPlayer());
 			unitScript.SetHomeBase(gameObject);
