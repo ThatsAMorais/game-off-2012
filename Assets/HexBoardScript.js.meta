@@ -1,0 +1,17 @@
+fileFormatVersion: 2
+guid: efe162281c9e76f41bd1e6f1b35f29e4
+MonoImporter:
+  serializedVersion: 2
+  defaultReferences:
+  - base: {fileID: 400000, guid: 311428a121c850e40a8f21c11403a444, type: 2}
+  - branch_bush: {fileID: 400050, guid: 2b1015e7e9e82204197af11dead4b99d, type: 2}
+  - forker: {fileID: 400000, guid: 8c2847c979afeaa44b02dae867841e43, type: 2}
+  - brancher: {fileID: 400000, guid: bbaf09d0deeb0984eb8f79e5eacda421, type: 2}
+  - branch: {fileID: 400000, guid: 9445106dddeb4954d9145ca43277336e, type: 2}
+  - fork: {fileID: 400004, guid: 62eb557d7018da44b8c76e7c6787a9e9, type: 2}
+  - fortification: {fileID: 400000, guid: 50d8cc6964ac6c24da96d45d381cf2e1, type: 2}
+  - groundTexture1: {fileID: 2800000, guid: 2c528fec5d95e4ac28cf46399b887662, type: 3}
+  - groundTexture2: {fileID: 2800000, guid: d6cdc79ec19714fcd980ca3f6ac01a0a, type: 3}
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 

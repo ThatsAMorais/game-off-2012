@@ -1,0 +1,11 @@
+fileFormatVersion: 2
+guid: a6c1f576b35cf8142a1442abaf65eaa4
+MonoImporter:
+  serializedVersion: 2
+  defaultReferences:
+  - fork: {fileID: 100004, guid: 62eb557d7018da44b8c76e7c6787a9e9, type: 2}
+  - fortification: {fileID: 100000, guid: 50d8cc6964ac6c24da96d45d381cf2e1, type: 2}
+  - home_base: {instanceID: 0}
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 

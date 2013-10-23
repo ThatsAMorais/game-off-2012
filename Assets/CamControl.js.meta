@@ -1,0 +1,9 @@
+fileFormatVersion: 2
+guid: 319b99cd3ab1716409742167c0bea8e5
+MonoImporter:
+  serializedVersion: 2
+  defaultReferences:
+  - camOrigin: {fileID: 400002, guid: c0ab840bdd343f0418560f52b4f74271, type: 2}
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 

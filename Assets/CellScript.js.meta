@@ -1,0 +1,13 @@
+fileFormatVersion: 2
+guid: 141da8104e1122549ad6d79c020a5059
+MonoImporter:
+  serializedVersion: 2
+  defaultReferences:
+  - base: {fileID: 100000, guid: 311428a121c850e40a8f21c11403a444, type: 2}
+  - branch_bush: {fileID: 100050, guid: 2b1015e7e9e82204197af11dead4b99d, type: 2}
+  - guiBG_default: {fileID: 2800000, guid: ba6e8a76cf0f40a4da811b0afab5891f, type: 3}
+  - guiBG_player: {fileID: 2800000, guid: 476784efc02397f4c833a14fe4bb4874, type: 3}
+  - guiBG_opponent: {fileID: 2800000, guid: 9b3c9c912d6ba6e4185b1b15b2a99e9b, type: 3}
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 

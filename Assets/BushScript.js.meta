@@ -1,0 +1,11 @@
+fileFormatVersion: 2
+guid: 28dda034c2026bd42a28bc82d5db690d
+MonoImporter:
+  serializedVersion: 2
+  defaultReferences:
+  - branch: {fileID: 100000, guid: 9445106dddeb4954d9145ca43277336e, type: 2}
+  - guiBG_player: {instanceID: 0}
+  - guiBG_opponent: {instanceID: 0}
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 

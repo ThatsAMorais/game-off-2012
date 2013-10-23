@@ -1,0 +1,10 @@
+fileFormatVersion: 2
+guid: 263c2a70211547945baefc5275c2a5a8
+MonoImporter:
+  serializedVersion: 2
+  defaultReferences:
+  - forker: {fileID: 100000, guid: 8c2847c979afeaa44b02dae867841e43, type: 2}
+  - brancher: {fileID: 100000, guid: bbaf09d0deeb0984eb8f79e5eacda421, type: 2}
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
